@@ -1,7 +1,7 @@
-use dioxus::prelude::*;
-use std::collections::HashSet;
 use crate::components::Button;
 use crate::sellable::{Ingredient, Product, Quality, Sellable};
+use dioxus::prelude::*;
+use std::collections::HashSet;
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const HEADER_SVG: Asset = asset!("/assets/header.svg");
@@ -77,16 +77,22 @@ fn App() -> Element {
                     div { class: "justify-self-end", "{working_product.read().price()}" }
                 }
             }
-            if !working_product.read().effects.is_empty() {
-                div {
-                    class: "grid grid-cols-2 gap-4 content-start",
+            div {
+                class: "grid grid-cols-2 gap-4 content-start",
+                div { class: "col-span-full border", "Warning: Column in progress, has inaccuracies"}
+                if !working_product.read().effects.is_empty() {
                     div { "Causes:" }
                     div { class: "justify-self-end", "Multiplier:" }
                     for effect in working_product.read().effects.iter() {
                         div { "{effect:?}" }
                         div { class: "justify-self-end", "{effect.multiplier():.2}" }
                     }
+                    div { class: "border col-span-full" }
                 }
+                div {
+                    "Sell Price:"
+                }
+                div { class: "justify-self-end", "{working_product.read().sell_price():.0}" }
             }
         }
     }

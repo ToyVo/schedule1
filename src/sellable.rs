@@ -9,10 +9,19 @@ pub struct Sellable {
 
 impl Sellable {
     pub fn sell_price(&self) -> f32 {
-        let multiplier_sum = self
-            .effects
+        if self.ingredients.is_empty() {
+            return self.base.sell_price();
+        }
+
+        let multiplier_sum = self.effects
             .iter()
-            .map(|effect| effect.multiplier())
+            .map(|effect| {
+                if self.base.effects().contains(effect) {
+                    0.
+                } else {
+                    effect.multiplier()
+                }
+            })
             .sum::<f32>();
         self.base.sell_price() * (1. + multiplier_sum)
     }
@@ -25,20 +34,21 @@ impl Sellable {
         }
     }
     pub fn add_ingredient(&self, ingredient: Ingredient) -> Self {
-        let (removals, additions) = ingredient.effect_changes(&self.effects);
-        let mut effects = self.effects.clone();
-        for effect in removals {
-            effects.remove(&effect);
-        }
-        for effect in additions {
-            effects.insert(effect);
-        }
-        let mut ingredients = self.ingredients.clone();
-        ingredients.push(ingredient);
-        Sellable {
-            base: self.base,
-            ingredients,
-            effects,
+        let effects = ingredient.effect_changes(&self.effects);
+        // if there are no actual changes, don't add the ingredient
+        // if all removals already aren't in the effects and all additions already are in the effects
+        // GranddaddyPurple comes with Sedating, so adding FluMedicine will not change the effects
+        if effects != self.effects {
+            let mut ingredients = self.ingredients.clone();
+            ingredients.push(ingredient);
+            Sellable {
+                base: self.base,
+                ingredients,
+                effects,
+            }
+        } else {
+            // if there are no changes, return self
+            self.clone()
         }
     }
     pub fn price(&self) -> f32 {
@@ -47,6 +57,9 @@ impl Sellable {
             price += ingredient.price();
         }
         price
+    }
+    pub fn addictiveness(&self) -> f32 {
+        self.base.addictiveness()
     }
 }
 
@@ -159,528 +172,516 @@ impl Ingredient {
         }
     }
 
-    pub fn effect_changes(&self, effects: &HashSet<Effect>) -> (HashSet<Effect>, HashSet<Effect>) {
-        let mut removals = HashSet::new();
-        let mut additions = HashSet::new();
+    pub fn effect_changes(&self, effects: &HashSet<Effect>) -> HashSet<Effect> {
+        let mut effects = effects.clone();
         match self {
             Ingredient::Cuke => {
-                additions.insert(Effect::Energizing);
-                if effects.contains(&Effect::Munchies) {
-                    removals.insert(Effect::Munchies);
-                    additions.insert(Effect::Athletic);
+                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Athletic) {
+                    effects.remove(&Effect::Munchies);
+                    effects.insert(Effect::Athletic);
                 }
-                if effects.contains(&Effect::Slippery) && effects.contains(&Effect::Munchies) {
-                    removals.insert(Effect::Slippery);
-                    additions.insert(Effect::Athletic);
+                if effects.contains(&Effect::Slippery) && effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Athletic) {
+                    effects.remove(&Effect::Slippery);
+                    effects.insert(Effect::Athletic);
                 }
-                if effects.contains(&Effect::Foggy) {
-                    removals.insert(Effect::Foggy);
-                    additions.insert(Effect::Cyclopean);
+                if effects.contains(&Effect::Foggy) && !effects.contains(&Effect::Cyclopean) {
+                    effects.remove(&Effect::Foggy);
+                    effects.insert(Effect::Cyclopean);
                 }
-                if effects.contains(&Effect::Toxic) {
-                    removals.insert(Effect::Toxic);
-                    additions.insert(Effect::Euphoric);
+                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Laxative) {
+                    effects.remove(&Effect::Euphoric);
+                    effects.insert(Effect::Laxative);
                 }
-                if effects.contains(&Effect::Euphoric) {
-                    removals.insert(Effect::Euphoric);
-                    additions.insert(Effect::Laxative);
+                if effects.contains(&Effect::Toxic) && !effects.contains(&Effect::Euphoric) {
+                    effects.remove(&Effect::Toxic);
+                    effects.insert(Effect::Euphoric);
                 }
-                if effects.contains(&Effect::Slippery) {
-                    removals.insert(Effect::Slippery);
-                    additions.insert(Effect::Munchies);
+                if effects.contains(&Effect::Slippery) && !effects.contains(&Effect::Munchies) {
+                    effects.remove(&Effect::Slippery);
+                    effects.insert(Effect::Munchies);
                 }
-                if effects.contains(&Effect::Sneaky) {
-                    removals.insert(Effect::Sneaky);
-                    additions.insert(Effect::Paranoia);
+                if effects.contains(&Effect::Sneaky) && !effects.contains(&Effect::Paranoia) {
+                    effects.remove(&Effect::Sneaky);
+                    effects.insert(Effect::Paranoia);
                 }
-                if effects.contains(&Effect::Gingeritis) {
-                    removals.insert(Effect::Gingeritis);
-                    additions.insert(Effect::ThoughtProvoking);
+                if effects.contains(&Effect::Gingeritis) && !effects.contains(&Effect::ThoughtProvoking) {
+                    effects.remove(&Effect::Gingeritis);
+                    effects.insert(Effect::ThoughtProvoking);
                 }
+                effects.insert(Effect::Energizing);
             }
             Ingredient::Banana => {
-                additions.insert(Effect::Gingeritis);
-                if effects.contains(&Effect::Smelly) {
-                    removals.insert(Effect::Smelly);
-                    additions.insert(Effect::AntiGravity);
+                if effects.contains(&Effect::Smelly) && !effects.contains(&Effect::AntiGravity) {
+                    effects.remove(&Effect::Smelly);
+                    effects.insert(Effect::AntiGravity);
                 }
-                if effects.contains(&Effect::Disorienting) {
-                    removals.insert(Effect::Disorienting);
-                    additions.insert(Effect::Focused);
+                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::SeizureInducing) {
+                    effects.remove(&Effect::Focused);
+                    effects.insert(Effect::SeizureInducing);
                 }
-                if effects.contains(&Effect::Paranoia) {
-                    removals.insert(Effect::Paranoia);
-                    additions.insert(Effect::Jennerising);
+                if effects.contains(&Effect::Disorienting) && !effects.contains(&Effect::Focused) {
+                    effects.remove(&Effect::Disorienting);
+                    effects.insert(Effect::Focused);
                 }
-                if effects.contains(&Effect::LongFaced) {
-                    removals.insert(Effect::LongFaced);
-                    additions.insert(Effect::Refreshing);
+                if effects.contains(&Effect::Paranoia) && !effects.contains(&Effect::Jennerising) {
+                    effects.remove(&Effect::Paranoia);
+                    effects.insert(Effect::Jennerising);
                 }
-                if effects.contains(&Effect::Focused) {
-                    removals.insert(Effect::Focused);
-                    additions.insert(Effect::SeizureInducing);
+                if effects.contains(&Effect::LongFaced) && !effects.contains(&Effect::Refreshing) {
+                    effects.remove(&Effect::LongFaced);
+                    effects.insert(Effect::Refreshing);
                 }
-                if effects.contains(&Effect::Toxic) {
-                    removals.insert(Effect::Toxic);
-                    additions.insert(Effect::Smelly);
+                if effects.contains(&Effect::Toxic) && !effects.contains(&Effect::Smelly) {
+                    effects.remove(&Effect::Toxic);
+                    effects.insert(Effect::Smelly);
                 }
-                if effects.contains(&Effect::Calming) {
-                    removals.insert(Effect::Calming);
-                    additions.insert(Effect::Sneaky);
+                if effects.contains(&Effect::Calming) && !effects.contains(&Effect::Sneaky) {
+                    effects.remove(&Effect::Calming);
+                    effects.insert(Effect::Sneaky);
                 }
-                if effects.contains(&Effect::Cyclopean) {
-                    removals.insert(Effect::Cyclopean);
-                    additions.insert(Effect::ThoughtProvoking);
+                if effects.contains(&Effect::Cyclopean) && !effects.contains(&Effect::ThoughtProvoking) {
+                    effects.remove(&Effect::Cyclopean);
+                    effects.insert(Effect::ThoughtProvoking);
                 }
-                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Cyclopean) {
-                    removals.insert(Effect::Energizing);
-                    additions.insert(Effect::ThoughtProvoking);
+                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Cyclopean) && !effects.contains(&Effect::ThoughtProvoking) {
+                    effects.remove(&Effect::Energizing);
+                    effects.insert(Effect::ThoughtProvoking);
                 }
+                effects.insert(Effect::Gingeritis);
             }
             Ingredient::Paracetamol => {
-                additions.insert(Effect::Sneaky);
-                if effects.contains(&Effect::Munchies) {
-                    removals.insert(Effect::Munchies);
-                    additions.insert(Effect::AntiGravity);
+                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::AntiGravity) {
+                    effects.remove(&Effect::Munchies);
+                    effects.insert(Effect::AntiGravity);
                 }
-                if effects.contains(&Effect::Electrifying) {
-                    removals.insert(Effect::Electrifying);
-                    additions.insert(Effect::Athletic);
+                if effects.contains(&Effect::Electrifying) && !effects.contains(&Effect::Athletic) {
+                    effects.remove(&Effect::Electrifying);
+                    effects.insert(Effect::Athletic);
                 }
-                if effects.contains(&Effect::Paranoia) {
-                    removals.insert(Effect::Paranoia);
-                    additions.insert(Effect::Balding);
+                if effects.contains(&Effect::Paranoia) && !effects.contains(&Effect::Balding) {
+                    effects.remove(&Effect::Paranoia);
+                    effects.insert(Effect::Balding);
                 }
-                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Paranoia) {
-                    removals.insert(Effect::Energizing);
-                    additions.insert(Effect::Balding);
+                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Paranoia) {
+                    effects.remove(&Effect::Energizing);
+                    effects.insert(Effect::Paranoia);
                 }
-                if effects.contains(&Effect::Spicy) {
-                    removals.insert(Effect::Spicy);
-                    additions.insert(Effect::BrightEyed);
+                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Paranoia) && !effects.contains(&Effect::Balding) {
+                    effects.remove(&Effect::Energizing);
+                    effects.insert(Effect::Balding);
                 }
-                if effects.contains(&Effect::Foggy) {
-                    removals.insert(Effect::Foggy);
-                    additions.insert(Effect::Calming);
+                if effects.contains(&Effect::Spicy) && !effects.contains(&Effect::BrightEyed) {
+                    effects.remove(&Effect::Spicy);
+                    effects.insert(Effect::BrightEyed);
                 }
-                if effects.contains(&Effect::Focused) {
-                    removals.insert(Effect::Focused);
-                    additions.insert(Effect::Gingeritis);
+                if effects.contains(&Effect::Calming) && !effects.contains(&Effect::Slippery) {
+                    effects.remove(&Effect::Calming);
+                    effects.insert(Effect::Slippery);
                 }
-                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Munchies) {
-                    removals.insert(Effect::Energizing);
-                    additions.insert(Effect::Paranoia);
+                if effects.contains(&Effect::Foggy) && !effects.contains(&Effect::Calming) {
+                    effects.remove(&Effect::Foggy);
+                    effects.insert(Effect::Calming);
                 }
-                if effects.contains(&Effect::Calming) {
-                    removals.insert(Effect::Calming);
-                    additions.insert(Effect::Slippery);
+                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::Gingeritis) {
+                    effects.remove(&Effect::Focused);
+                    effects.insert(Effect::Gingeritis);
                 }
-                if effects.contains(&Effect::Glowing) {
-                    removals.insert(Effect::Glowing);
-                    additions.insert(Effect::Toxic);
+                if effects.contains(&Effect::Toxic) && !effects.contains(&Effect::TropicThunder) {
+                    effects.remove(&Effect::Toxic);
+                    effects.insert(Effect::TropicThunder);
                 }
-                if effects.contains(&Effect::Toxic) {
-                    removals.insert(Effect::Toxic);
-                    additions.insert(Effect::TropicThunder);
+                if effects.contains(&Effect::Glowing) && !effects.contains(&Effect::Toxic) {
+                    effects.remove(&Effect::Glowing);
+                    effects.insert(Effect::Toxic);
                 }
+                effects.insert(Effect::Sneaky);
             }
             Ingredient::Donut => {
-                additions.insert(Effect::CalorieDense);
-                if effects.contains(&Effect::Shrinking) {
-                    removals.insert(Effect::Shrinking);
-                    additions.insert(Effect::Energizing);
+                if effects.contains(&Effect::Shrinking) && !effects.contains(&Effect::Energizing) {
+                    effects.remove(&Effect::Shrinking);
+                    effects.insert(Effect::Energizing);
                 }
-                if effects.contains(&Effect::Focused) {
-                    removals.insert(Effect::Focused);
-                    additions.insert(Effect::Euphoric);
+                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::Euphoric) {
+                    effects.remove(&Effect::Focused);
+                    effects.insert(Effect::Euphoric);
                 }
-                if effects.contains(&Effect::CalorieDense) && !effects.contains(&Effect::Explosive) {
-                    removals.insert(Effect::CalorieDense);
-                    additions.insert(Effect::Explosive);
+                if effects.contains(&Effect::CalorieDense) && !effects.contains(&Effect::Explosive)
+                {
+                    effects.remove(&Effect::CalorieDense);
+                    effects.insert(Effect::Explosive);
                 }
-                if effects.contains(&Effect::Jennerising) {
-                    removals.insert(Effect::Jennerising);
-                    additions.insert(Effect::Gingeritis);
+                if effects.contains(&Effect::Jennerising) && !effects.contains(&Effect::Gingeritis) {
+                    effects.remove(&Effect::Jennerising);
+                    effects.insert(Effect::Gingeritis);
                 }
-                if effects.contains(&Effect::AntiGravity) {
-                    removals.insert(Effect::AntiGravity);
-                    additions.insert(Effect::Slippery);
+                if effects.contains(&Effect::AntiGravity) && !effects.contains(&Effect::Slippery) {
+                    effects.remove(&Effect::AntiGravity);
+                    effects.insert(Effect::Slippery);
                 }
-                if effects.contains(&Effect::Balding) {
-                    removals.insert(Effect::Balding);
-                    additions.insert(Effect::Sneaky);
+                if effects.contains(&Effect::Balding) && !effects.contains(&Effect::Sneaky) {
+                    effects.remove(&Effect::Balding);
+                    effects.insert(Effect::Sneaky);
                 }
+                effects.insert(Effect::CalorieDense);
             }
             Ingredient::Viagra => {
-                additions.insert(Effect::TropicThunder);
-                if effects.contains(&Effect::Euphoric) {
-                    removals.insert(Effect::Euphoric);
-                    additions.insert(Effect::BrightEyed);
+                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::BrightEyed) {
+                    effects.remove(&Effect::Euphoric);
+                    effects.insert(Effect::BrightEyed);
                 }
-                if effects.contains(&Effect::Laxative) {
-                    removals.insert(Effect::Laxative);
-                    additions.insert(Effect::Calming);
+                if effects.contains(&Effect::Laxative) && !effects.contains(&Effect::Calming) {
+                    effects.remove(&Effect::Laxative);
+                    effects.insert(Effect::Calming);
                 }
-                if effects.contains(&Effect::Athletic) {
-                    removals.insert(Effect::Athletic);
-                    additions.insert(Effect::Sneaky);
+                if effects.contains(&Effect::Athletic) && !effects.contains(&Effect::Sneaky) {
+                    effects.remove(&Effect::Athletic);
+                    effects.insert(Effect::Sneaky);
                 }
-                if effects.contains(&Effect::Disorienting) {
-                    removals.insert(Effect::Disorienting);
-                    additions.insert(Effect::Toxic);
+                if effects.contains(&Effect::Disorienting) && !effects.contains(&Effect::Toxic) {
+                    effects.remove(&Effect::Disorienting);
+                    effects.insert(Effect::Toxic);
                 }
+                effects.insert(Effect::TropicThunder);
             }
             Ingredient::MouthWash => {
-                additions.insert(Effect::Balding);
-                if effects.contains(&Effect::Calming) {
-                    removals.insert(Effect::Calming);
-                    additions.insert(Effect::AntiGravity);
+                if effects.contains(&Effect::Calming) && !effects.contains(&Effect::AntiGravity) {
+                    effects.remove(&Effect::Calming);
+                    effects.insert(Effect::AntiGravity);
                 }
-                if effects.contains(&Effect::Focused) {
-                    removals.insert(Effect::Focused);
-                    additions.insert(Effect::Jennerising);
+                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::Jennerising) {
+                    effects.remove(&Effect::Focused);
+                    effects.insert(Effect::Jennerising);
                 }
-                if effects.contains(&Effect::Explosive) {
-                    removals.insert(Effect::Explosive);
-                    additions.insert(Effect::Sedating);
+                if effects.contains(&Effect::Explosive) && !effects.contains(&Effect::Sedating) {
+                    effects.remove(&Effect::Explosive);
+                    effects.insert(Effect::Sedating);
                 }
-                if effects.contains(&Effect::CalorieDense) {
-                    removals.insert(Effect::CalorieDense);
-                    additions.insert(Effect::Sneaky);
+                if effects.contains(&Effect::CalorieDense) && !effects.contains(&Effect::Sneaky) {
+                    effects.remove(&Effect::CalorieDense);
+                    effects.insert(Effect::Sneaky);
                 }
+                effects.insert(Effect::Balding);
             }
             Ingredient::FluMedicine => {
-                additions.insert(Effect::Sedating);
-                if effects.contains(&Effect::Calming) {
-                    removals.insert(Effect::Calming);
-                    additions.insert(Effect::BrightEyed);
+                if effects.contains(&Effect::Calming) && !effects.contains(&Effect::BrightEyed) {
+                    effects.remove(&Effect::Calming);
+                    effects.insert(Effect::BrightEyed);
                 }
-                if effects.contains(&Effect::Focused) {
-                    removals.insert(Effect::Focused);
-                    additions.insert(Effect::Calming);
+                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::Calming) {
+                    effects.remove(&Effect::Focused);
+                    effects.insert(Effect::Calming);
                 }
-                if effects.contains(&Effect::Laxative) {
-                    removals.insert(Effect::Laxative);
-                    additions.insert(Effect::Euphoric);
+                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Toxic) {
+                    effects.remove(&Effect::Euphoric);
+                    effects.insert(Effect::Toxic);
                 }
-                if effects.contains(&Effect::Cyclopean) {
-                    removals.insert(Effect::Cyclopean);
-                    additions.insert(Effect::Foggy);
+                if effects.contains(&Effect::Laxative) && !effects.contains(&Effect::Euphoric) {
+                    effects.remove(&Effect::Laxative);
+                    effects.insert(Effect::Euphoric);
                 }
-                if effects.contains(&Effect::ThoughtProvoking) {
-                    removals.insert(Effect::ThoughtProvoking);
-                    additions.insert(Effect::Gingeritis);
+                if effects.contains(&Effect::Cyclopean) && !effects.contains(&Effect::Foggy) {
+                    effects.remove(&Effect::Cyclopean);
+                    effects.insert(Effect::Foggy);
                 }
-                if effects.contains(&Effect::Athletic) {
-                    removals.insert(Effect::Athletic);
-                    additions.insert(Effect::Munchies);
+                if effects.contains(&Effect::ThoughtProvoking) && !effects.contains(&Effect::Gingeritis) {
+                    effects.remove(&Effect::ThoughtProvoking);
+                    effects.insert(Effect::Gingeritis);
                 }
-                if effects.contains(&Effect::Shrinking) {
-                    removals.insert(Effect::Shrinking);
-                    additions.insert(Effect::Paranoia);
+                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Slippery) {
+                    effects.remove(&Effect::Munchies);
+                    effects.insert(Effect::Slippery);
                 }
-                if effects.contains(&Effect::Electrifying) {
-                    removals.insert(Effect::Electrifying);
-                    additions.insert(Effect::Refreshing);
+                if effects.contains(&Effect::Athletic) && !effects.contains(&Effect::Munchies) {
+                    effects.remove(&Effect::Athletic);
+                    effects.insert(Effect::Munchies);
                 }
-                if effects.contains(&Effect::Munchies) {
-                    removals.insert(Effect::Munchies);
-                    additions.insert(Effect::Slippery);
+                if effects.contains(&Effect::Shrinking) && !effects.contains(&Effect::Paranoia) {
+                    effects.remove(&Effect::Shrinking);
+                    effects.insert(Effect::Paranoia);
                 }
-                if effects.contains(&Effect::Euphoric) {
-                    removals.insert(Effect::Euphoric);
-                    additions.insert(Effect::Toxic);
+                if effects.contains(&Effect::Electrifying) && !effects.contains(&Effect::Refreshing) {
+                    effects.remove(&Effect::Electrifying);
+                    effects.insert(Effect::Refreshing);
                 }
+                effects.insert(Effect::Sedating);
             }
             Ingredient::Gasoline => {
-                additions.insert(Effect::Toxic);
-                if effects.contains(&Effect::Paranoia) {
-                    removals.insert(Effect::Paranoia);
-                    additions.insert(Effect::Calming);
+                if effects.contains(&Effect::Paranoia) && !effects.contains(&Effect::Calming) {
+                    effects.remove(&Effect::Paranoia);
+                    effects.insert(Effect::Calming);
                 }
-                if effects.contains(&Effect::Electrifying) {
-                    removals.insert(Effect::Electrifying);
-                    additions.insert(Effect::Disorienting);
+                if effects.contains(&Effect::Disorienting) && !effects.contains(&Effect::Glowing) {
+                    effects.remove(&Effect::Disorienting);
+                    effects.insert(Effect::Glowing);
                 }
-                if effects.contains(&Effect::Energizing) {
-                    removals.insert(Effect::Energizing);
-                    additions.insert(Effect::Euphoric);
+                if effects.contains(&Effect::Electrifying) && !effects.contains(&Effect::Disorienting) {
+                    effects.remove(&Effect::Electrifying);
+                    effects.insert(Effect::Disorienting);
                 }
-                if effects.contains(&Effect::Shrinking) {
-                    removals.insert(Effect::Shrinking);
-                    additions.insert(Effect::Focused);
+                if effects.contains(&Effect::Shrinking) && !effects.contains(&Effect::Focused) {
+                    effects.remove(&Effect::Shrinking);
+                    effects.insert(Effect::Focused);
                 }
-                if effects.contains(&Effect::Laxative) {
-                    removals.insert(Effect::Laxative);
-                    additions.insert(Effect::Foggy);
+                if effects.contains(&Effect::Laxative) && !effects.contains(&Effect::Foggy) {
+                    effects.remove(&Effect::Laxative);
+                    effects.insert(Effect::Foggy);
                 }
-                if effects.contains(&Effect::Disorienting) {
-                    removals.insert(Effect::Disorienting);
-                    additions.insert(Effect::Glowing);
+                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Sedating) {
+                    effects.remove(&Effect::Munchies);
+                    effects.insert(Effect::Sedating);
                 }
-                if effects.contains(&Effect::Munchies) {
-                    removals.insert(Effect::Munchies);
-                    additions.insert(Effect::Sedating);
+                if effects.contains(&Effect::Gingeritis) && !effects.contains(&Effect::Smelly) {
+                    effects.remove(&Effect::Gingeritis);
+                    effects.insert(Effect::Smelly);
                 }
-                if effects.contains(&Effect::Gingeritis) {
-                    removals.insert(Effect::Gingeritis);
-                    additions.insert(Effect::Smelly);
+                if effects.contains(&Effect::Sneaky) && !effects.contains(&Effect::TropicThunder) {
+                    effects.remove(&Effect::Sneaky);
+                    effects.insert(Effect::TropicThunder);
                 }
-                if effects.contains(&Effect::Jennerising) {
-                    removals.insert(Effect::Jennerising);
-                    additions.insert(Effect::Sneaky);
+                if effects.contains(&Effect::Jennerising) && !effects.contains(&Effect::Sneaky) {
+                    effects.remove(&Effect::Jennerising);
+                    effects.insert(Effect::Sneaky);
                 }
-                if effects.contains(&Effect::Energizing) {
-                    removals.insert(Effect::Energizing);
-                    additions.insert(Effect::Spicy);
+                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Spicy) {
+                    effects.remove(&Effect::Euphoric);
+                    effects.insert(Effect::Spicy);
                 }
-                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Energizing) {
-                    removals.insert(Effect::Euphoric);
-                    additions.insert(Effect::Spicy);
+                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Euphoric) {
+                    effects.remove(&Effect::Energizing);
+                    effects.insert(Effect::Euphoric);
                 }
-                if effects.contains(&Effect::Sneaky) {
-                    removals.insert(Effect::Sneaky);
-                    additions.insert(Effect::TropicThunder);
-                }
+                effects.insert(Effect::Toxic);
             }
             Ingredient::EnergyDrink => {
-                additions.insert(Effect::Athletic);
-                if effects.contains(&Effect::Schizophrenia) {
-                    removals.insert(Effect::Schizophrenia);
-                    additions.insert(Effect::Balding);
+                if effects.contains(&Effect::Schizophrenia) && !effects.contains(&Effect::Balding) {
+                    effects.remove(&Effect::Schizophrenia);
+                    effects.insert(Effect::Balding);
                 }
-                if effects.contains(&Effect::Glowing) {
-                    removals.insert(Effect::Glowing);
-                    additions.insert(Effect::Disorienting);
+                if effects.contains(&Effect::Disorienting) && !effects.contains(&Effect::Electrifying) {
+                    effects.remove(&Effect::Disorienting);
+                    effects.insert(Effect::Electrifying);
                 }
-                if effects.contains(&Effect::Disorienting) {
-                    removals.insert(Effect::Disorienting);
-                    additions.insert(Effect::Electrifying);
+                if effects.contains(&Effect::Glowing) && !effects.contains(&Effect::Disorienting) {
+                    effects.remove(&Effect::Glowing);
+                    effects.insert(Effect::Disorienting);
                 }
-                if effects.contains(&Effect::Euphoric) {
-                    removals.insert(Effect::Euphoric);
-                    additions.insert(Effect::Energizing);
+                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Energizing) {
+                    effects.remove(&Effect::Euphoric);
+                    effects.insert(Effect::Energizing);
                 }
-                if effects.contains(&Effect::Spicy) {
-                    removals.insert(Effect::Spicy);
-                    additions.insert(Effect::Euphoric);
+                if effects.contains(&Effect::Spicy) && !effects.contains(&Effect::Euphoric) {
+                    effects.remove(&Effect::Spicy);
+                    effects.insert(Effect::Euphoric);
                 }
-                if effects.contains(&Effect::Foggy) {
-                    removals.insert(Effect::Foggy);
-                    additions.insert(Effect::Laxative);
+                if effects.contains(&Effect::Foggy) && !effects.contains(&Effect::Laxative) {
+                    effects.remove(&Effect::Foggy);
+                    effects.insert(Effect::Laxative);
                 }
-                if effects.contains(&Effect::Sedating) {
-                    removals.insert(Effect::Sedating);
-                    additions.insert(Effect::Munchies);
+                if effects.contains(&Effect::Sedating) && !effects.contains(&Effect::Munchies) {
+                    effects.remove(&Effect::Sedating);
+                    effects.insert(Effect::Munchies);
                 }
-                if effects.contains(&Effect::Focused) {
-                    removals.insert(Effect::Focused);
-                    additions.insert(Effect::Shrinking);
+                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::Shrinking) {
+                    effects.remove(&Effect::Focused);
+                    effects.insert(Effect::Shrinking);
                 }
-                if effects.contains(&Effect::TropicThunder) {
-                    removals.insert(Effect::TropicThunder);
-                    additions.insert(Effect::Sneaky);
+                if effects.contains(&Effect::TropicThunder) && !effects.contains(&Effect::Sneaky) {
+                    effects.remove(&Effect::TropicThunder);
+                    effects.insert(Effect::Sneaky);
                 }
+                effects.insert(Effect::Athletic);
             }
             Ingredient::MotorOil => {
-                additions.insert(Effect::Slippery);
-                if effects.contains(&Effect::Paranoia) {
-                    removals.insert(Effect::Paranoia);
-                    additions.insert(Effect::AntiGravity);
+                if effects.contains(&Effect::Paranoia) && !effects.contains(&Effect::AntiGravity) {
+                    effects.remove(&Effect::Paranoia);
+                    effects.insert(Effect::AntiGravity);
                 }
-                if effects.contains(&Effect::Energizing) {
-                    removals.insert(Effect::Energizing);
-                    additions.insert(Effect::Munchies);
+                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Schizophrenia) {
+                    effects.remove(&Effect::Munchies);
+                    effects.insert(Effect::Schizophrenia);
                 }
-                if effects.contains(&Effect::Energizing) {
-                    removals.insert(Effect::Energizing);
-                    additions.insert(Effect::Schizophrenia);
+                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Munchies) {
+                    effects.remove(&Effect::Energizing);
+                    effects.insert(Effect::Munchies);
                 }
-                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Energizing) {
-                    removals.insert(Effect::Munchies);
-                    additions.insert(Effect::Schizophrenia);
+                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Sedating) {
+                    effects.remove(&Effect::Euphoric);
+                    effects.insert(Effect::Sedating);
                 }
-                if effects.contains(&Effect::Euphoric) {
-                    removals.insert(Effect::Euphoric);
-                    additions.insert(Effect::Sedating);
+                if effects.contains(&Effect::Foggy) && !effects.contains(&Effect::Toxic) {
+                    effects.remove(&Effect::Foggy);
+                    effects.insert(Effect::Toxic);
                 }
-                if effects.contains(&Effect::Foggy) {
-                    removals.insert(Effect::Foggy);
-                    additions.insert(Effect::Toxic);
-                }
+                effects.insert(Effect::Slippery);
             }
             Ingredient::MegaBean => {
-                additions.insert(Effect::Foggy);
-                if effects.contains(&Effect::Sneaky) {
-                    removals.insert(Effect::Sneaky);
-                    additions.insert(Effect::Calming);
+                if effects.contains(&Effect::Calming) && !effects.contains(&Effect::Glowing) {
+                    effects.remove(&Effect::Calming);
+                    effects.insert(Effect::Glowing);
                 }
-                if effects.contains(&Effect::ThoughtProvoking) {
-                    removals.insert(Effect::ThoughtProvoking);
-                    additions.insert(Effect::Cyclopean);
+                if effects.contains(&Effect::Sneaky) && !effects.contains(&Effect::Calming) {
+                    effects.remove(&Effect::Sneaky);
+                    effects.insert(Effect::Calming);
                 }
-                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::ThoughtProvoking) {
-                    removals.insert(Effect::Energizing);
-                    additions.insert(Effect::Cyclopean);
+                if effects.contains(&Effect::ThoughtProvoking) && !effects.contains(&Effect::Cyclopean) {
+                    effects.remove(&Effect::ThoughtProvoking);
+                    effects.insert(Effect::Cyclopean);
                 }
-                if effects.contains(&Effect::Focused) {
-                    removals.insert(Effect::Focused);
-                    additions.insert(Effect::Disorienting);
+                if effects.contains(&Effect::Energizing)
+                    && !effects.contains(&Effect::ThoughtProvoking)
+                    && !effects.contains(&Effect::Cyclopean)
+                {
+                    effects.remove(&Effect::Energizing);
+                    effects.insert(Effect::Cyclopean);
                 }
-                if effects.contains(&Effect::Shrinking) {
-                    removals.insert(Effect::Shrinking);
-                    additions.insert(Effect::Electrifying);
+                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::Disorienting) {
+                    effects.remove(&Effect::Focused);
+                    effects.insert(Effect::Disorienting);
                 }
-                if effects.contains(&Effect::ThoughtProvoking) {
-                    removals.insert(Effect::ThoughtProvoking);
-                    additions.insert(Effect::Energizing);
+                if effects.contains(&Effect::Shrinking) && !effects.contains(&Effect::Electrifying) {
+                    effects.remove(&Effect::Shrinking);
+                    effects.insert(Effect::Electrifying);
                 }
-                if effects.contains(&Effect::SeizureInducing) {
-                    removals.insert(Effect::SeizureInducing);
-                    additions.insert(Effect::Focused);
+                if effects.contains(&Effect::SeizureInducing) && !effects.contains(&Effect::Focused) {
+                    effects.remove(&Effect::SeizureInducing);
+                    effects.insert(Effect::Focused);
                 }
-                if effects.contains(&Effect::Calming) {
-                    removals.insert(Effect::Calming);
-                    additions.insert(Effect::Glowing);
+                if effects.contains(&Effect::Athletic) && !effects.contains(&Effect::Laxative) {
+                    effects.remove(&Effect::Athletic);
+                    effects.insert(Effect::Laxative);
                 }
-                if effects.contains(&Effect::Sneaky) {
-                    removals.insert(Effect::Sneaky);
-                    additions.insert(Effect::Glowing);
+                if effects.contains(&Effect::Jennerising) && !effects.contains(&Effect::Paranoia) {
+                    effects.remove(&Effect::Jennerising);
+                    effects.insert(Effect::Paranoia);
                 }
-                if effects.contains(&Effect::Athletic) {
-                    removals.insert(Effect::Athletic);
-                    additions.insert(Effect::Laxative);
+                if effects.contains(&Effect::Slippery) && !effects.contains(&Effect::Toxic) {
+                    effects.remove(&Effect::Slippery);
+                    effects.insert(Effect::Toxic);
                 }
-                if effects.contains(&Effect::Jennerising) {
-                    removals.insert(Effect::Jennerising);
-                    additions.insert(Effect::Paranoia);
-                }
-                if effects.contains(&Effect::Slippery) {
-                    removals.insert(Effect::Slippery);
-                    additions.insert(Effect::Toxic);
-                }
+                effects.insert(Effect::Foggy);
             }
             Ingredient::Chili => {
-                additions.insert(Effect::Spicy);
-                if effects.contains(&Effect::Sneaky) {
-                    removals.insert(Effect::Sneaky);
-                    additions.insert(Effect::BrightEyed);
+                if effects.contains(&Effect::Sneaky) && !effects.contains(&Effect::BrightEyed) {
+                    effects.remove(&Effect::Sneaky);
+                    effects.insert(Effect::BrightEyed);
                 }
-                if effects.contains(&Effect::Athletic) {
-                    removals.insert(Effect::Athletic);
-                    additions.insert(Effect::Euphoric);
+                if effects.contains(&Effect::Athletic) && !effects.contains(&Effect::Euphoric) {
+                    effects.remove(&Effect::Athletic);
+                    effects.insert(Effect::Euphoric);
                 }
-                if effects.contains(&Effect::Laxative) {
-                    removals.insert(Effect::Laxative);
-                    additions.insert(Effect::LongFaced);
+                if effects.contains(&Effect::Laxative) && !effects.contains(&Effect::LongFaced) {
+                    effects.remove(&Effect::Laxative);
+                    effects.insert(Effect::LongFaced);
                 }
-                if effects.contains(&Effect::Shrinking) {
-                    removals.insert(Effect::Shrinking);
-                    additions.insert(Effect::Refreshing);
+                if effects.contains(&Effect::Shrinking) && !effects.contains(&Effect::Refreshing) {
+                    effects.remove(&Effect::Shrinking);
+                    effects.insert(Effect::Refreshing);
                 }
-                if effects.contains(&Effect::Munchies) {
-                    removals.insert(Effect::Munchies);
-                    additions.insert(Effect::Toxic);
+                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Toxic) {
+                    effects.remove(&Effect::Munchies);
+                    effects.insert(Effect::Toxic);
                 }
-                if effects.contains(&Effect::AntiGravity) {
-                    removals.insert(Effect::AntiGravity);
-                    additions.insert(Effect::TropicThunder);
+                if effects.contains(&Effect::AntiGravity) && !effects.contains(&Effect::TropicThunder) {
+                    effects.remove(&Effect::AntiGravity);
+                    effects.insert(Effect::TropicThunder);
                 }
+                effects.insert(Effect::Spicy);
             }
             Ingredient::Battery => {
-                additions.insert(Effect::BrightEyed);
-                if effects.contains(&Effect::Laxative) {
-                    removals.insert(Effect::Laxative);
-                    additions.insert(Effect::CalorieDense);
+                if effects.contains(&Effect::Laxative) && !effects.contains(&Effect::CalorieDense) {
+                    effects.remove(&Effect::Laxative);
+                    effects.insert(Effect::CalorieDense);
                 }
-                if effects.contains(&Effect::Electrifying) && !effects.contains(&Effect::Zombifying) {
-                    removals.insert(Effect::Electrifying);
-                    additions.insert(Effect::Euphoric);
+                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Electrifying) && !effects.contains(&Effect::Zombifying) {
+                    effects.remove(&Effect::Euphoric);
+                    effects.insert(Effect::Zombifying);
                 }
-                if effects.contains(&Effect::Cyclopean) {
-                    removals.insert(Effect::Cyclopean);
-                    additions.insert(Effect::Glowing);
+                if effects.contains(&Effect::Electrifying) && !effects.contains(&Effect::Zombifying) && !effects.contains(&Effect::Euphoric)
+                {
+                    effects.remove(&Effect::Electrifying);
+                    effects.insert(Effect::Euphoric);
                 }
-                if effects.contains(&Effect::Shrinking) {
-                    removals.insert(Effect::Shrinking);
-                    additions.insert(Effect::Munchies);
+                if effects.contains(&Effect::Cyclopean) && !effects.contains(&Effect::Glowing) {
+                    effects.remove(&Effect::Cyclopean);
+                    effects.insert(Effect::Glowing);
                 }
-                if effects.contains(&Effect::Munchies) {
-                    removals.insert(Effect::Munchies);
-                    additions.insert(Effect::TropicThunder);
+                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::TropicThunder) {
+                    effects.remove(&Effect::Munchies);
+                    effects.insert(Effect::TropicThunder);
                 }
-                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Electrifying) {
-                    removals.insert(Effect::Euphoric);
-                    additions.insert(Effect::Zombifying);
+                if effects.contains(&Effect::Shrinking) && !effects.contains(&Effect::Munchies) {
+                    effects.remove(&Effect::Shrinking);
+                    effects.insert(Effect::Munchies);
                 }
+                effects.insert(Effect::BrightEyed);
             }
             Ingredient::Iodine => {
-                additions.insert(Effect::Jennerising);
-                if effects.contains(&Effect::CalorieDense) {
-                    removals.insert(Effect::CalorieDense);
-                    additions.insert(Effect::Gingeritis);
+                if effects.contains(&Effect::CalorieDense) && !effects.contains(&Effect::Gingeritis) {
+                    effects.insert(Effect::CalorieDense);
+                    effects.insert(Effect::Gingeritis);
                 }
-                if effects.contains(&Effect::Foggy) {
-                    removals.insert(Effect::Foggy);
-                    additions.insert(Effect::Paranoia);
+                if effects.contains(&Effect::Foggy) && !effects.contains(&Effect::Paranoia) {
+                    effects.remove(&Effect::Foggy);
+                    effects.insert(Effect::Paranoia);
                 }
-                if effects.contains(&Effect::Calming) {
-                    removals.insert(Effect::Calming);
-                    additions.insert(Effect::Sedating);
+                if effects.contains(&Effect::Calming) && !effects.contains(&Effect::Balding) {
+                    effects.remove(&Effect::Calming);
+                    effects.insert(Effect::Balding);
                 }
-                if effects.contains(&Effect::Euphoric) {
-                    removals.insert(Effect::Euphoric);
-                    additions.insert(Effect::SeizureInducing);
+                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::SeizureInducing) {
+                    effects.remove(&Effect::Euphoric);
+                    effects.insert(Effect::SeizureInducing);
                 }
-                if effects.contains(&Effect::Toxic) {
-                    removals.insert(Effect::Toxic);
-                    additions.insert(Effect::Sneaky);
+                if effects.contains(&Effect::Toxic) && !effects.contains(&Effect::Sneaky) {
+                    effects.remove(&Effect::Toxic);
+                    effects.insert(Effect::Sneaky);
                 }
-                if effects.contains(&Effect::Refreshing) {
-                    removals.insert(Effect::Refreshing);
-                    additions.insert(Effect::ThoughtProvoking);
+                if effects.contains(&Effect::Refreshing) && !effects.contains(&Effect::ThoughtProvoking) {
+                    effects.remove(&Effect::Refreshing);
+                    effects.insert(Effect::ThoughtProvoking);
                 }
+                effects.insert(Effect::Jennerising);
             }
             Ingredient::Addy => {
-                additions.insert(Effect::ThoughtProvoking);
-                if effects.contains(&Effect::LongFaced) {
-                    removals.insert(Effect::LongFaced);
-                    additions.insert(Effect::Electrifying);
+                if effects.contains(&Effect::LongFaced) && !effects.contains(&Effect::Electrifying) {
+                    effects.remove(&Effect::LongFaced);
+                    effects.insert(Effect::Electrifying);
                 }
-                if effects.contains(&Effect::Foggy) {
-                    removals.insert(Effect::Foggy);
-                    additions.insert(Effect::Energizing);
+                if effects.contains(&Effect::Foggy) && !effects.contains(&Effect::Energizing) {
+                    effects.remove(&Effect::Foggy);
+                    effects.insert(Effect::Energizing);
                 }
-                if effects.contains(&Effect::Explosive) {
-                    removals.insert(Effect::Explosive);
-                    additions.insert(Effect::Euphoric);
+                if effects.contains(&Effect::Explosive) && !effects.contains(&Effect::Euphoric) {
+                    effects.remove(&Effect::Explosive);
+                    effects.insert(Effect::Euphoric);
                 }
-                if effects.contains(&Effect::Sedating) {
-                    removals.insert(Effect::Sedating);
-                    additions.insert(Effect::Gingeritis);
+                if effects.contains(&Effect::Sedating) && !effects.contains(&Effect::Gingeritis) {
+                    effects.remove(&Effect::Sedating);
+                    effects.insert(Effect::Gingeritis);
                 }
-                if effects.contains(&Effect::Glowing) {
-                    removals.insert(Effect::Glowing);
-                    additions.insert(Effect::Refreshing);
+                if effects.contains(&Effect::Glowing) && !effects.contains(&Effect::Refreshing) {
+                    effects.remove(&Effect::Glowing);
+                    effects.insert(Effect::Refreshing);
                 }
+                effects.insert(Effect::ThoughtProvoking);
             }
             Ingredient::HorseSemen => {
-                additions.insert(Effect::LongFaced);
-                if effects.contains(&Effect::AntiGravity) {
-                    removals.insert(Effect::AntiGravity);
-                    additions.insert(Effect::Calming);
+                if effects.contains(&Effect::AntiGravity) && !effects.contains(&Effect::Calming) {
+                    effects.remove(&Effect::AntiGravity);
+                    effects.insert(Effect::Calming);
                 }
-                if effects.contains(&Effect::ThoughtProvoking) {
-                    removals.insert(Effect::ThoughtProvoking);
-                    additions.insert(Effect::Electrifying);
+                if effects.contains(&Effect::ThoughtProvoking) && !effects.contains(&Effect::Electrifying) {
+                    effects.remove(&Effect::ThoughtProvoking);
+                    effects.insert(Effect::Electrifying);
                 }
-                if effects.contains(&Effect::Gingeritis) {
-                    removals.insert(Effect::Gingeritis);
-                    additions.insert(Effect::Refreshing);
+                if effects.contains(&Effect::Gingeritis) && !effects.contains(&Effect::Refreshing) {
+                    effects.remove(&Effect::Gingeritis);
+                    effects.insert(Effect::Refreshing);
                 }
+                effects.insert(Effect::LongFaced);
             }
         }
-        (removals, additions)
+        effects
     }
 }
 
@@ -760,5 +761,868 @@ impl Effect {
             Effect::TropicThunder => 0.46,
             Effect::Zombifying => 0.58,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mix_1() {
+        let mut mix = Sellable::from_product(Product::Meth(Quality::Medium));
+        assert!(mix.effects.is_empty());
+        mix = mix.add_ingredient(Ingredient::Cuke);
+        assert_eq!(mix.effects, HashSet::from([Effect::Energizing]));
+        mix = mix.add_ingredient(Ingredient::Banana);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([Effect::Gingeritis, Effect::ThoughtProvoking])
+        );
+        mix = mix.add_ingredient(Ingredient::Paracetamol);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([Effect::Gingeritis, Effect::ThoughtProvoking, Effect::Sneaky])
+        );
+        mix = mix.add_ingredient(Ingredient::Donut);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([
+                Effect::Gingeritis,
+                Effect::ThoughtProvoking,
+                Effect::Sneaky,
+                Effect::CalorieDense,
+            ])
+        );
+        mix = mix.add_ingredient(Ingredient::Donut);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([
+                Effect::Gingeritis,
+                Effect::ThoughtProvoking,
+                Effect::Sneaky,
+                Effect::CalorieDense,
+                Effect::Explosive,
+            ])
+        );
+        mix = mix.add_ingredient(Ingredient::Battery);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([
+                Effect::Gingeritis,
+                Effect::ThoughtProvoking,
+                Effect::Sneaky,
+                Effect::CalorieDense,
+                Effect::Explosive,
+                Effect::BrightEyed,
+            ])
+        );
+        mix = mix.add_ingredient(Ingredient::Iodine);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([
+                Effect::Gingeritis,
+                Effect::ThoughtProvoking,
+                Effect::Sneaky,
+                Effect::CalorieDense,
+                Effect::Explosive,
+                Effect::BrightEyed,
+                Effect::Jennerising,
+            ])
+        );
+        mix = mix.add_ingredient(Ingredient::Addy);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([
+                Effect::Gingeritis,
+                Effect::ThoughtProvoking,
+                Effect::Sneaky,
+                Effect::CalorieDense,
+                Effect::BrightEyed,
+                Effect::Jennerising,
+                Effect::Euphoric,
+            ])
+        );
+        mix = mix.add_ingredient(Ingredient::Gasoline);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([
+                Effect::ThoughtProvoking,
+                Effect::Sneaky,
+                Effect::CalorieDense,
+                Effect::BrightEyed,
+                Effect::Smelly,
+                Effect::Spicy,
+                Effect::Toxic,
+                Effect::TropicThunder,
+            ])
+        );
+    }
+
+    #[test]
+    fn test_og_addy() {
+        let mix = Sellable::from_product(Product::OGKush).add_ingredient(Ingredient::Addy);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([Effect::Calming, Effect::ThoughtProvoking]),
+        );
+        // assert_eq!(mix.sell_price().round(), 54.);
+        // assert_eq!(mix.addictiveness(), 0.42);
+    }
+    #[test]
+    fn test_sour_addy() {
+        let mix = Sellable::from_product(Product::SourDiesel).add_ingredient(Ingredient::Addy);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([Effect::Refreshing, Effect::ThoughtProvoking]),
+        );
+        // assert_eq!(mix.sell_price().round(), 55.);
+        // assert_eq!(mix.addictiveness(), 0.52);
+    }
+    #[test]
+    fn test_green_addy() {
+        let mix = Sellable::from_product(Product::GreenCrack).add_ingredient(Ingredient::Addy);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([Effect::Energizing, Effect::ThoughtProvoking]),
+        );
+        // assert_eq!(mix.sell_price().round(), 58.);
+        // assert_eq!(mix.addictiveness(), 0.76);
+    }
+    #[test]
+    fn test_meth_addy() {
+        let mix =
+            Sellable::from_product(Product::Meth(Quality::High)).add_ingredient(Ingredient::Addy);
+        assert_eq!(mix.effects, HashSet::from([Effect::ThoughtProvoking]),);
+        // assert_eq!(mix.sell_price().round(), 101.);
+        // assert_eq!(mix.addictiveness(), 0.97);
+    }
+    #[test]
+    fn test_cocaine_addy() {
+        let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::Addy);
+        assert_eq!(mix.effects, HashSet::from([Effect::ThoughtProvoking]),);
+        // assert_eq!(mix.sell_price().round(), 216.);
+        // assert_eq!(mix.addictiveness(), 0.77);
+    }
+    #[test]
+    fn test_og_banana() {
+        let mix = Sellable::from_product(Product::OGKush).add_ingredient(Ingredient::Banana);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([Effect::Gingeritis, Effect::Sneaky]),
+        );
+        // assert_eq!(mix.sell_price().round(), 50.);
+        // assert_eq!(mix.addictiveness(), 0.37);
+    }
+    #[test]
+    fn test_sour_banana() {
+        let mix = Sellable::from_product(Product::SourDiesel).add_ingredient(Ingredient::Banana);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([Effect::Refreshing, Effect::Gingeritis]),
+        );
+        // assert_eq!(mix.sell_price().round(), 47.);
+        // assert_eq!(mix.addictiveness(), 0.15);
+    }
+    #[test]
+    fn test_green_banana() {
+        let mix = Sellable::from_product(Product::GreenCrack).add_ingredient(Ingredient::Banana);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([Effect::Gingeritis, Effect::ThoughtProvoking]),
+        );
+        // assert_eq!(mix.sell_price().round(), 57.);
+        // assert_eq!(mix.addictiveness(), 0.42);
+    }
+    #[test]
+    fn test_purple_banana() {
+        let mix =
+            Sellable::from_product(Product::GranddaddyPurple).add_ingredient(Ingredient::Banana);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([Effect::Sedating, Effect::Gingeritis]),
+        );
+        // assert_eq!(mix.sell_price().round(), 51.);
+        // assert_eq!(mix.addictiveness(), 0.05);
+    }
+    #[test]
+    fn test_meth_banana() {
+        let mix =
+            Sellable::from_product(Product::Meth(Quality::High)).add_ingredient(Ingredient::Banana);
+        assert_eq!(mix.effects, HashSet::from([Effect::Gingeritis]),);
+        // assert_eq!(mix.sell_price().round(), 85.);
+        // assert_eq!(mix.addictiveness(), 0.94);
+    }
+    #[test]
+    fn test_cocaine_banana() {
+        let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::Banana);
+        assert_eq!(mix.effects, HashSet::from([Effect::Gingeritis]),);
+        // assert_eq!(mix.sell_price().round(), 180.);
+        // assert_eq!(mix.addictiveness(), 0.4);
+    }
+    #[test]
+    fn test_og_battery() {
+        let mix = Sellable::from_product(Product::OGKush).add_ingredient(Ingredient::Battery);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([Effect::Calming, Effect::BrightEyed]),
+        );
+        // assert_eq!(mix.sell_price().round(), 52.);
+        // assert_eq!(mix.addictiveness(), 0.25);
+    }
+    #[test]
+    fn test_sour_battery() {
+        let mix = Sellable::from_product(Product::SourDiesel).add_ingredient(Ingredient::Battery);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([Effect::Refreshing, Effect::BrightEyed]),
+        );
+        // assert_eq!(mix.sell_price().round(), 54.);
+        // assert_eq!(mix.addictiveness(), 0.35);
+    }
+    #[test]
+    fn test_green_battery() {
+        let mix = Sellable::from_product(Product::GreenCrack).add_ingredient(Ingredient::Battery);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([Effect::Energizing, Effect::BrightEyed]),
+        );
+        // assert_eq!(mix.sell_price().round(), 57.);
+        // assert_eq!(mix.addictiveness(), 0.59);
+    }
+    #[test]
+    fn test_purple_battery() {
+        let mix =
+            Sellable::from_product(Product::GranddaddyPurple).add_ingredient(Ingredient::Battery);
+        assert_eq!(
+            mix.effects,
+            HashSet::from([Effect::Sedating, Effect::BrightEyed]),
+        );
+        // assert_eq!(mix.sell_price().round(), 58.);
+        // assert_eq!(mix.addictiveness(), 0.25);
+    }
+    #[test]
+    fn test_meth_battery() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::Battery);
+        assert_eq!(mix.effects, HashSet::from([Effect::BrightEyed]),);
+        // assert_eq!(mix.sell_price().round(), 98.);
+        // assert_eq!(mix.addictiveness(), 0.8);
+    }
+    #[test]
+    fn test_cocaine_battery() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::Battery);
+        assert_eq!(mix.effects, HashSet::from([Effect::BrightEyed]),);
+        // assert_eq!(mix.sell_price().round(), 210.);
+        // assert_eq!(mix.addictiveness(), 0.60);
+    }
+    #[test]
+    fn test_og_chili() {
+        let mix = Sellable::from_product(Product::OGKush)
+            .add_ingredient(Ingredient::Chili);
+        assert_eq!(mix.effects, HashSet::from([Effect::Calming, Effect::Spicy]),);
+        // assert_eq!(mix.sell_price().round(), 52.);
+        // assert_eq!(mix.addictiveness(), 0.71);
+    }
+    #[test]
+    fn test_sour_chili() {
+        let mix = Sellable::from_product(Product::SourDiesel)
+            .add_ingredient(Ingredient::Chili);
+        assert_eq!(mix.effects, HashSet::from([Effect::Refreshing, Effect::Spicy]),);
+        // assert_eq!(mix.sell_price().round(), 53.);
+        // assert_eq!(mix.addictiveness(), 0.81);
+    }
+    #[test]
+    fn test_green_chili() {
+        let mix = Sellable::from_product(Product::GreenCrack)
+            .add_ingredient(Ingredient::Chili);
+        assert_eq!(mix.effects, HashSet::from([Effect::Energizing, Effect::Spicy]),);
+        // assert_eq!(mix.sell_price().round(), 56.);
+        // assert_eq!(mix.addictiveness(), 1.);
+    }
+    #[test]
+    fn test_purple_chili() {
+        let mix = Sellable::from_product(Product::GranddaddyPurple)
+            .add_ingredient(Ingredient::Chili);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating, Effect::Spicy]),);
+        // assert_eq!(mix.sell_price().round(), 57.);
+        // assert_eq!(mix.addictiveness(), 0.71);
+    }
+    #[test]
+    fn test_meth_chili() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::Chili);
+        assert_eq!(mix.effects, HashSet::from([Effect::Spicy]),);
+        // assert_eq!(mix.sell_price().round(), 97.);
+        // assert_eq!(mix.addictiveness(), 1.);
+    }
+    #[test]
+    fn test_cocaine_chili() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::Chili);
+        assert_eq!(mix.effects, HashSet::from([Effect::Spicy]),);
+        // assert_eq!(mix.sell_price().round(), 207.);
+        // assert_eq!(mix.addictiveness(), 1.);
+    }
+    #[test]
+    fn test_og_cuke() {
+        let mix = Sellable::from_product(Product::OGKush)
+            .add_ingredient(Ingredient::Cuke);
+        assert_eq!(mix.effects, HashSet::from([Effect::Calming, Effect::Energizing]),);
+        // assert_eq!(mix.sell_price().round(), 46.);
+        // assert_eq!(mix.addictiveness(), 0.39);
+    }
+    #[test]
+    fn test_sour_cuke() {
+        let mix = Sellable::from_product(Product::SourDiesel)
+            .add_ingredient(Ingredient::Cuke);
+        assert_eq!(mix.effects, HashSet::from([Effect::Refreshing, Effect::Energizing]),);
+        // assert_eq!(mix.sell_price().round(), 48.);
+        // assert_eq!(mix.addictiveness(), 0.49);
+    }
+    #[test]
+    fn test_purple_cuke() {
+        let mix = Sellable::from_product(Product::GranddaddyPurple)
+            .add_ingredient(Ingredient::Cuke);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating, Effect::Energizing]),);
+        // assert_eq!(mix.sell_price().round(), 52.);
+        // assert_eq!(mix.addictiveness(), 0.39);
+    }
+    #[test]
+    fn test_meth_cuke() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::Cuke);
+        assert_eq!(mix.effects, HashSet::from([Effect::Energizing]),);
+        // assert_eq!(mix.sell_price().round(), 84.);
+        // assert_eq!(mix.addictiveness(), 0.60);
+    }
+    #[test]
+    fn test_cocaine_cuke() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::Cuke);
+        assert_eq!(mix.effects, HashSet::from([Effect::Energizing]),);
+        // assert_eq!(mix.sell_price().round(), 183.);
+        // assert_eq!(mix.addictiveness(), 0.74);
+    }
+    #[test]
+    fn test_og_donut() {
+        let mix = Sellable::from_product(Product::OGKush)
+            .add_ingredient(Ingredient::Donut);
+        assert_eq!(mix.effects, HashSet::from([Effect::Calming, Effect::CalorieDense]),);
+        // assert_eq!(mix.sell_price().round(), 48.);
+        // assert_eq!(mix.addictiveness(), 0.15);
+    }
+    #[test]
+    fn test_sour_donut() {
+        let mix = Sellable::from_product(Product::SourDiesel)
+            .add_ingredient(Ingredient::Donut);
+        assert_eq!(mix.effects, HashSet::from([Effect::Refreshing, Effect::CalorieDense]),);
+        // assert_eq!(mix.sell_price().round(), 50.);
+        // assert_eq!(mix.addictiveness(), 0.25);
+    }
+    #[test]
+    fn test_green_donut() {
+        let mix = Sellable::from_product(Product::GreenCrack)
+            .add_ingredient(Ingredient::Donut);
+        assert_eq!(mix.effects, HashSet::from([Effect::Energizing, Effect::CalorieDense]),);
+        // assert_eq!(mix.sell_price().round(), 52.);
+        // assert_eq!(mix.addictiveness(), 0.49);
+    }
+    #[test]
+    fn test_purple_donut() {
+        let mix = Sellable::from_product(Product::GranddaddyPurple)
+            .add_ingredient(Ingredient::Donut);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating, Effect::CalorieDense]),);
+        // assert_eq!(mix.sell_price().round(), 54.);
+        // assert_eq!(mix.addictiveness(), 0.15);
+    }
+    #[test]
+    fn test_meth_donut() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::Donut);
+        assert_eq!(mix.effects, HashSet::from([Effect::CalorieDense]),);
+        // assert_eq!(mix.sell_price().round(), 90.);
+        // assert_eq!(mix.addictiveness(), 0.92);
+    }
+    #[test]
+    fn test_cocaine_donut() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::Donut);
+        assert_eq!(mix.effects, HashSet::from([Effect::CalorieDense]),);
+        // assert_eq!(mix.sell_price().round(), 192.);
+        // assert_eq!(mix.addictiveness(), 0.50);
+    }
+    #[test]
+    fn test_og_energydrink() {
+        let mix = Sellable::from_product(Product::OGKush)
+            .add_ingredient(Ingredient::EnergyDrink);
+        assert_eq!(mix.effects, HashSet::from([Effect::Calming, Effect::Athletic]),);
+        // assert_eq!(mix.sell_price().round(), 50.);
+        // assert_eq!(mix.addictiveness(), 0.65);
+    }
+    #[test]
+    fn test_sour_energydrink() {
+        let mix = Sellable::from_product(Product::SourDiesel)
+            .add_ingredient(Ingredient::EnergyDrink);
+        assert_eq!(mix.effects, HashSet::from([Effect::Refreshing, Effect::Athletic]),);
+        // assert_eq!(mix.sell_price().round(), 51.);
+        // assert_eq!(mix.addictiveness(), 0.76);
+    }
+    #[test]
+    fn test_green_energydrink() {
+        let mix = Sellable::from_product(Product::GreenCrack)
+            .add_ingredient(Ingredient::EnergyDrink);
+        assert_eq!(mix.effects, HashSet::from([Effect::Energizing, Effect::Athletic]),);
+        // assert_eq!(mix.sell_price().round(), 54.);
+        // assert_eq!(mix.addictiveness(), 0.99);
+    }
+    #[test]
+    fn test_purple_energydrink() {
+        let mix = Sellable::from_product(Product::GranddaddyPurple)
+            .add_ingredient(Ingredient::EnergyDrink);
+        assert_eq!(mix.effects, HashSet::from([Effect::Munchies, Effect::Athletic]),);
+        // assert_eq!(mix.sell_price().round(), 50.);
+        // assert_eq!(mix.addictiveness(), 0.75);
+    }
+    #[test]
+    fn test_meth_energydrink() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::EnergyDrink);
+        assert_eq!(mix.effects, HashSet::from([Effect::Athletic]),);
+        // assert_eq!(mix.sell_price().round(), 92.);
+        // assert_eq!(mix.addictiveness(), 1.);
+    }
+    #[test]
+    fn test_cocaine_energydrink() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::EnergyDrink);
+        assert_eq!(mix.effects, HashSet::from([Effect::Athletic]),);
+        // assert_eq!(mix.sell_price().round(), 198.);
+        // assert_eq!(mix.addictiveness(), 1.);
+    }
+    #[test]
+    fn test_og_flumedicine() {
+        let mix = Sellable::from_product(Product::OGKush)
+            .add_ingredient(Ingredient::FluMedicine);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating, Effect::BrightEyed]),);
+        // assert_eq!(mix.sell_price().round(), 58.);
+        // assert_eq!(mix.addictiveness(), 0.25);
+    }
+    #[test]
+    fn test_sour_flumedicine() {
+        let mix = Sellable::from_product(Product::SourDiesel)
+            .add_ingredient(Ingredient::FluMedicine);
+        assert_eq!(mix.effects, HashSet::from([Effect::Refreshing, Effect::Sedating]),);
+        // assert_eq!(mix.sell_price().round(), 49.);
+        // assert_eq!(mix.addictiveness(), 0.15);
+    }
+    #[test]
+    fn test_green_flumedicine() {
+        let mix = Sellable::from_product(Product::GreenCrack)
+            .add_ingredient(Ingredient::FluMedicine);
+        assert_eq!(mix.effects, HashSet::from([Effect::Energizing, Effect::Sedating]),);
+        // assert_eq!(mix.sell_price().round(), 52.);
+        // assert_eq!(mix.addictiveness(), 0.39);
+    }
+    #[test]
+    fn test_meth_flumedicine() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::FluMedicine);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating]),);
+        // assert_eq!(mix.sell_price().round(), 88.);
+        // assert_eq!(mix.addictiveness(), 0.60);
+    }
+    #[test]
+    fn test_cocaine_flumedicine() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::FluMedicine);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating]),);
+        // assert_eq!(mix.sell_price().round(), 189.);
+        // assert_eq!(mix.addictiveness(), 0.40);
+    }
+    #[test]
+    fn test_og_gasoline() {
+        let mix = Sellable::from_product(Product::OGKush)
+            .add_ingredient(Ingredient::Gasoline);
+        assert_eq!(mix.effects, HashSet::from([Effect::Calming, Effect::Toxic]),);
+        // assert_eq!(mix.sell_price().round(), 38.);
+        // assert_eq!(mix.addictiveness(), 0.05);
+    }
+    #[test]
+    fn test_sour_gasoline() {
+        let mix = Sellable::from_product(Product::SourDiesel)
+            .add_ingredient(Ingredient::Gasoline);
+        assert_eq!(mix.effects, HashSet::from([Effect::Refreshing, Effect::Toxic]),);
+        // assert_eq!(mix.sell_price().round(), 40.);
+        // assert_eq!(mix.addictiveness(), 0.15);
+    }
+    #[test]
+    fn test_green_gasoline() {
+        let mix = Sellable::from_product(Product::GreenCrack)
+            .add_ingredient(Ingredient::Gasoline);
+        assert_eq!(mix.effects, HashSet::from([Effect::Euphoric, Effect::Toxic]),);
+        // assert_eq!(mix.sell_price().round(), 40.);
+        // assert_eq!(mix.addictiveness(), 0.28);
+    }
+    #[test]
+    fn test_purple_gasoline() {
+        let mix = Sellable::from_product(Product::GranddaddyPurple)
+            .add_ingredient(Ingredient::Gasoline);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating, Effect::Toxic]),);
+        // assert_eq!(mix.sell_price().round(), 44.);
+        // assert_eq!(mix.addictiveness(), 0.05);
+    }
+    #[test]
+    fn test_meth_gasoline() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::Gasoline);
+        assert_eq!(mix.effects, HashSet::from([Effect::Toxic]),);
+        // assert_eq!(mix.sell_price().round(), 70.);
+        // assert_eq!(mix.addictiveness(), 0.60);
+    }
+    #[test]
+    fn test_cocaine_gasoline() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::Gasoline);
+        assert_eq!(mix.effects, HashSet::from([Effect::Toxic]),);
+        // assert_eq!(mix.sell_price().round(), 150.);
+        // assert_eq!(mix.addictiveness(), 0.4);
+    }
+    #[test]
+    fn test_og_horsesemen() {
+        let mix = Sellable::from_product(Product::OGKush)
+            .add_ingredient(Ingredient::HorseSemen);
+        assert_eq!(mix.effects, HashSet::from([Effect::Calming, Effect::LongFaced]),);
+        // assert_eq!(mix.sell_price().round(), 57.);
+        // assert_eq!(mix.addictiveness(), 0.65);
+    }
+    #[test]
+    fn test_sour_horsesemen() {
+        let mix = Sellable::from_product(Product::SourDiesel)
+            .add_ingredient(Ingredient::HorseSemen);
+        assert_eq!(mix.effects, HashSet::from([Effect::Refreshing, Effect::LongFaced]),);
+        // assert_eq!(mix.sell_price().round(), 61.);
+        // assert_eq!(mix.addictiveness(), 0.99);
+    }
+    #[test]
+    fn test_green_horsesemen() {
+        let mix = Sellable::from_product(Product::GreenCrack)
+            .add_ingredient(Ingredient::HorseSemen);
+        assert_eq!(mix.effects, HashSet::from([Effect::Energizing, Effect::LongFaced]),);
+        // assert_eq!(mix.sell_price().round(), 58.);
+        // assert_eq!(mix.addictiveness(), 0.76);
+    }
+    #[test]
+    fn test_purple_horsesemen() {
+        let mix = Sellable::from_product(Product::GranddaddyPurple)
+            .add_ingredient(Ingredient::HorseSemen);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating, Effect::LongFaced]),);
+        // assert_eq!(mix.sell_price().round(), 62.);
+        // assert_eq!(mix.addictiveness(), 0.65);
+    }
+    #[test]
+    fn test_meth_horsesemen() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::HorseSemen);
+        assert_eq!(mix.effects, HashSet::from([Effect::LongFaced]),);
+        // assert_eq!(mix.sell_price().round(), 106.);
+        // assert_eq!(mix.addictiveness(), 1.);
+    }
+    #[test]
+    fn test_cocaine_horsesemen() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::HorseSemen);
+        assert_eq!(mix.effects, HashSet::from([Effect::LongFaced]),);
+        // assert_eq!(mix.sell_price().round(), 228.);
+        // assert_eq!(mix.addictiveness(), 1.);
+    }
+    #[test]
+    fn test_og_iodine() {
+        let mix = Sellable::from_product(Product::OGKush)
+            .add_ingredient(Ingredient::Iodine);
+        assert_eq!(mix.effects, HashSet::from([Effect::Balding, Effect::Jennerising]),);
+        // assert_eq!(mix.sell_price().round(), 60.);
+        // assert_eq!(mix.addictiveness(), 0.39);
+    }
+    #[test]
+    fn test_sour_iodine() {
+        let mix = Sellable::from_product(Product::SourDiesel)
+            .add_ingredient(Ingredient::Iodine);
+        assert_eq!(mix.effects, HashSet::from([Effect::ThoughtProvoking, Effect::Jennerising]),);
+        // assert_eq!(mix.sell_price().round(), 65.);
+        // assert_eq!(mix.addictiveness(), 0.76);
+    }
+    #[test]
+    fn test_green_iodine() {
+        let mix = Sellable::from_product(Product::GreenCrack)
+            .add_ingredient(Ingredient::Iodine);
+        assert_eq!(mix.effects, HashSet::from([Effect::Energizing, Effect::Jennerising]),);
+        // assert_eq!(mix.sell_price().round(), 57.);
+        // assert_eq!(mix.addictiveness(), 0.73);
+    }
+    #[test]
+    fn test_purple_iodine() {
+        let mix = Sellable::from_product(Product::GranddaddyPurple)
+            .add_ingredient(Ingredient::Iodine);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating, Effect::Jennerising]),);
+        // assert_eq!(mix.sell_price().round(), 59.);
+        // assert_eq!(mix.addictiveness(), 0.39);
+    }
+    #[test]
+    fn test_meth_iodine() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::Iodine);
+        assert_eq!(mix.effects, HashSet::from([Effect::Jennerising]),);
+        // assert_eq!(mix.sell_price().round(), 99.);
+        // assert_eq!(mix.addictiveness(), 0.94);
+    }
+    #[test]
+    fn test_cocaine_iodine() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::Iodine);
+        assert_eq!(mix.effects, HashSet::from([Effect::Jennerising]),);
+        // assert_eq!(mix.sell_price().round(), 213.);
+        // assert_eq!(mix.addictiveness(), 0.74);
+    }
+    #[test]
+    fn test_og_megabean() {
+        let mix = Sellable::from_product(Product::OGKush)
+            .add_ingredient(Ingredient::MegaBean);
+        assert_eq!(mix.effects, HashSet::from([Effect::Foggy, Effect::Glowing]),);
+        // assert_eq!(mix.sell_price().round(), 64.);
+        // assert_eq!(mix.addictiveness(), 0.62);
+    }
+    #[test]
+    fn test_sour_megabean() {
+        let mix = Sellable::from_product(Product::SourDiesel)
+            .add_ingredient(Ingredient::MegaBean);
+        assert_eq!(mix.effects, HashSet::from([Effect::Refreshing, Effect::Foggy]),);
+        // assert_eq!(mix.sell_price().round(), 52.);
+        // assert_eq!(mix.addictiveness(), 0.25);
+    }
+    #[test]
+    fn test_green_megabean() {
+        let mix = Sellable::from_product(Product::GreenCrack)
+            .add_ingredient(Ingredient::MegaBean);
+        assert_eq!(mix.effects, HashSet::from([Effect::Foggy, Effect::Cyclopean]),);
+        // assert_eq!(mix.sell_price().round(), 67.);
+        // assert_eq!(mix.addictiveness(), 0.25);
+    }
+    #[test]
+    fn test_purple_megabean() {
+        let mix = Sellable::from_product(Product::GranddaddyPurple)
+            .add_ingredient(Ingredient::MegaBean);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating, Effect::Foggy]),);
+        // assert_eq!(mix.sell_price().round(), 57.);
+        // assert_eq!(mix.addictiveness(), 0.15);
+    }
+    #[test]
+    fn test_meth_megabean() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::MegaBean);
+        assert_eq!(mix.effects, HashSet::from([Effect::Foggy]),);
+        // assert_eq!(mix.sell_price().round(), 95.);
+        // assert_eq!(mix.addictiveness(), 0.70);
+    }
+    #[test]
+    fn test_cocaine_megabean() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::MegaBean);
+        assert_eq!(mix.effects, HashSet::from([Effect::Foggy]),);
+        // assert_eq!(mix.sell_price().round(), 204.);
+        // assert_eq!(mix.addictiveness(), 0.50);
+    }
+    #[test]
+    fn test_og_motoroil() {
+        let mix = Sellable::from_product(Product::OGKush)
+            .add_ingredient(Ingredient::MotorOil);
+        assert_eq!(mix.effects, HashSet::from([Effect::Calming, Effect::Slippery]),);
+        // assert_eq!(mix.sell_price().round(), 50.);
+        // assert_eq!(mix.addictiveness(), 0.35);
+    }
+    #[test]
+    fn test_sour_motoroil() {
+        let mix = Sellable::from_product(Product::SourDiesel)
+            .add_ingredient(Ingredient::MotorOil);
+        assert_eq!(mix.effects, HashSet::from([Effect::Refreshing, Effect::Slippery]),);
+        // assert_eq!(mix.sell_price().round(), 52.);
+        // assert_eq!(mix.addictiveness(), 0.46);
+    }
+    #[test]
+    fn test_green_motoroil() {
+        let mix = Sellable::from_product(Product::GreenCrack)
+            .add_ingredient(Ingredient::MotorOil);
+        assert_eq!(mix.effects, HashSet::from([Effect::Munchies, Effect::Slippery]),);
+        // assert_eq!(mix.sell_price().round(), 51.);
+        // assert_eq!(mix.addictiveness(), 0.45);
+    }
+    #[test]
+    fn test_purple_motoroil() {
+        let mix = Sellable::from_product(Product::GranddaddyPurple)
+            .add_ingredient(Ingredient::MotorOil);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating, Effect::Slippery]),);
+        // assert_eq!(mix.sell_price().round(), 56.);
+        // assert_eq!(mix.addictiveness(), 0.35);
+    }
+    #[test]
+    fn test_meth_motoroil() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::MotorOil);
+        assert_eq!(mix.effects, HashSet::from([Effect::Slippery]),);
+        // assert_eq!(mix.sell_price().round(), 94.);
+        // assert_eq!(mix.addictiveness(), 0.90);
+    }
+    #[test]
+    fn test_cocaine_motoroil() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::MotorOil);
+        assert_eq!(mix.effects, HashSet::from([Effect::Slippery]),);
+        // assert_eq!(mix.sell_price().round(), 201.);
+        // assert_eq!(mix.addictiveness(), 0.70);
+    }
+    #[test]
+    fn test_og_mouthwash() {
+        let mix = Sellable::from_product(Product::OGKush)
+            .add_ingredient(Ingredient::MouthWash);
+        assert_eq!(mix.effects, HashSet::from([Effect::Balding, Effect::AntiGravity]),);
+        // assert_eq!(mix.sell_price().round(), 64.);
+        // assert_eq!(mix.addictiveness(), 0.66);
+    }
+    #[test]
+    fn test_sour_mouthwash() {
+        let mix = Sellable::from_product(Product::SourDiesel)
+            .add_ingredient(Ingredient::MouthWash);
+        assert_eq!(mix.effects, HashSet::from([Effect::Balding, Effect::Refreshing]),);
+        // assert_eq!(mix.sell_price().round(), 50.);
+        // assert_eq!(mix.addictiveness(), 0.15);
+    }
+    #[test]
+    fn test_green_mouthwash() {
+        let mix = Sellable::from_product(Product::GreenCrack)
+            .add_ingredient(Ingredient::MouthWash);
+        assert_eq!(mix.effects, HashSet::from([Effect::Energizing, Effect::Balding]),);
+        // assert_eq!(mix.sell_price().round(), 53.);
+        // assert_eq!(mix.addictiveness(), 0.39);
+    }
+    #[test]
+    fn test_purple_mouthwash() {
+        let mix = Sellable::from_product(Product::GranddaddyPurple)
+            .add_ingredient(Ingredient::MouthWash);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating, Effect::Balding]),);
+        // assert_eq!(mix.sell_price().round(), 55.);
+        // assert_eq!(mix.addictiveness(), 0.05);
+    }
+    #[test]
+    fn test_meth_mouthwash() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::MouthWash);
+        assert_eq!(mix.effects, HashSet::from([Effect::Balding]),);
+        // assert_eq!(mix.sell_price().round(), 91.);
+        // assert_eq!(mix.addictiveness(), 0.60);
+    }
+    #[test]
+    fn test_cocaine_mouthwash() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::MouthWash);
+        assert_eq!(mix.effects, HashSet::from([Effect::Balding]),);
+        // assert_eq!(mix.sell_price().round(), 195.);
+        // assert_eq!(mix.addictiveness(), 0.40);
+    }
+    #[test]
+    fn test_og_paracetamol() {
+        let mix = Sellable::from_product(Product::OGKush)
+            .add_ingredient(Ingredient::Paracetamol);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sneaky, Effect::Slippery]),);
+        // assert_eq!(mix.sell_price().round(), 55.);
+        // assert_eq!(mix.addictiveness(), 0.68);
+    }
+    #[test]
+    fn test_sour_paracetamol() {
+        let mix = Sellable::from_product(Product::SourDiesel)
+            .add_ingredient(Ingredient::Paracetamol);
+        assert_eq!(mix.effects, HashSet::from([Effect::Refreshing, Effect::Sneaky]),);
+        // assert_eq!(mix.sell_price().round(), 48.);
+        // assert_eq!(mix.addictiveness(), 0.48);
+    }
+    #[test]
+    fn test_green_paracetamol() {
+        let mix = Sellable::from_product(Product::GreenCrack)
+            .add_ingredient(Ingredient::Paracetamol);
+        assert_eq!(mix.effects, HashSet::from([Effect::Paranoia, Effect::Sneaky]),);
+        // assert_eq!(mix.sell_price().round(), 43.);
+        // assert_eq!(mix.addictiveness(), 0.37);
+    }
+    #[test]
+    fn test_purple_paracetamol() {
+        let mix = Sellable::from_product(Product::GranddaddyPurple)
+            .add_ingredient(Ingredient::Paracetamol);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating, Effect::Sneaky]),);
+        // assert_eq!(mix.sell_price().round(), 52.);
+        // assert_eq!(mix.addictiveness(), 0.37);
+    }
+    #[test]
+    fn test_meth_paracetamol() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::Paracetamol);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sneaky]),);
+        // assert_eq!(mix.sell_price().round(), 87.);
+        // assert_eq!(mix.addictiveness(), 0.70);
+    }
+    #[test]
+    fn test_cocaine_paracetamol() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::Paracetamol);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sneaky]),);
+        // assert_eq!(mix.sell_price().round(), 186.);
+        // assert_eq!(mix.addictiveness(), 0.72);
+    }
+    #[test]
+    fn test_og_viagra() {
+        let mix = Sellable::from_product(Product::OGKush)
+            .add_ingredient(Ingredient::Viagra);
+        assert_eq!(mix.effects, HashSet::from([Effect::Calming, Effect::TropicThunder]),);
+        // assert_eq!(mix.sell_price().round(), 55.);
+        // assert_eq!(mix.addictiveness(), 0.85);
+    }
+    #[test]
+    fn test_sour_viagra() {
+        let mix = Sellable::from_product(Product::SourDiesel)
+            .add_ingredient(Ingredient::Viagra);
+        assert_eq!(mix.effects, HashSet::from([Effect::Refreshing, Effect::TropicThunder]),);
+        // assert_eq!(mix.sell_price().round(), 56.);
+        // assert_eq!(mix.addictiveness(), 0.95);
+    }
+    #[test]
+    fn test_green_viagra() {
+        let mix = Sellable::from_product(Product::GreenCrack)
+            .add_ingredient(Ingredient::Viagra);
+        assert_eq!(mix.effects, HashSet::from([Effect::Energizing, Effect::TropicThunder]),);
+        // assert_eq!(mix.sell_price().round(), 59.);
+        // assert_eq!(mix.addictiveness(), 0.95);
+    }
+    #[test]
+    fn test_purple_viagra() {
+        let mix = Sellable::from_product(Product::GranddaddyPurple)
+            .add_ingredient(Ingredient::Viagra);
+        assert_eq!(mix.effects, HashSet::from([Effect::Sedating, Effect::TropicThunder]),);
+        // assert_eq!(mix.sell_price().round(), 60.);
+        // assert_eq!(mix.addictiveness(), 0.85);
+    }
+    #[test]
+    fn test_meth_viagra() {
+        let mix = Sellable::from_product(Product::Meth(Quality::High))
+            .add_ingredient(Ingredient::Viagra);
+        assert_eq!(mix.effects, HashSet::from([Effect::TropicThunder]),);
+        // assert_eq!(mix.sell_price().round(), 102.);
+        // assert_eq!(mix.addictiveness(), 1.);
+    }
+    #[test]
+    fn test_cocaine_viagra() {
+        let mix = Sellable::from_product(Product::Cocaine)
+            .add_ingredient(Ingredient::Viagra);
+        assert_eq!(mix.effects, HashSet::from([Effect::TropicThunder]),);
+        // assert_eq!(mix.sell_price().round(), 219.);
+        // assert_eq!(mix.addictiveness(), 1.);
     }
 }
