@@ -33,22 +33,191 @@ impl Sellable {
             ingredients: Vec::new(),
         }
     }
-    pub fn add_ingredient(&self, ingredient: Ingredient) -> Self {
-        let effects = ingredient.effect_changes(&self.effects);
-        // if there are no actual changes, don't add the ingredient
-        // if all removals already aren't in the effects and all additions already are in the effects
-        // GranddaddyPurple comes with Sedating, so adding FluMedicine will not change the effects
-        if effects != self.effects {
-            let mut ingredients = self.ingredients.clone();
-            ingredients.push(ingredient);
-            Sellable {
-                base: self.base,
-                ingredients,
-                effects,
+    
+    pub fn apply_effects(&mut self, remove: Effect, add: Effect, condition: Option<bool>) {
+        if self.effects.contains(&remove) && !self.effects.contains(&add) && condition.unwrap_or(true) {
+            self.effects.remove(&remove);
+            self.effects.insert(add);
+        }
+    }
+    
+    pub fn add_ingredient(&mut self, ingredient: Ingredient) -> Self {
+        let effects = self.effects.clone();
+        match ingredient {
+            Ingredient::Cuke => {
+                self.apply_effects(Effect::Munchies, Effect::Athletic, None);
+                self.apply_effects(Effect::Slippery, Effect::Athletic, Some(self.effects.contains(&Effect::Munchies)));
+                self.apply_effects(Effect::Foggy, Effect::Cyclopean, None);
+                self.apply_effects(Effect::Euphoric, Effect::Laxative, None);
+                self.apply_effects(Effect::Toxic, Effect::Euphoric, None);
+                self.apply_effects(Effect::Slippery, Effect::Munchies, None);
+                self.apply_effects(Effect::Sneaky, Effect::Paranoia, None);
+                self.apply_effects(Effect::Gingeritis, Effect::ThoughtProvoking, None);
+                self.effects.insert(Effect::Energizing);
             }
-        } else {
+            Ingredient::Banana => {
+                self.apply_effects(Effect::Smelly, Effect::AntiGravity, None);
+                self.apply_effects(Effect::Focused, Effect::SeizureInducing, None);
+                self.apply_effects(Effect::Disorienting, Effect::Focused, None);
+                self.apply_effects(Effect::Paranoia, Effect::Jennerising, None);
+                self.apply_effects(Effect::LongFaced, Effect::Refreshing, None);
+                self.apply_effects(Effect::Toxic, Effect::Smelly, None);
+                self.apply_effects(Effect::Calming, Effect::Sneaky, None);
+                self.apply_effects(Effect::Cyclopean, Effect::ThoughtProvoking, None);
+                self.apply_effects(Effect::Energizing, Effect::ThoughtProvoking, Some(!self.effects.contains(&Effect::Cyclopean)));
+                self.effects.insert(Effect::Gingeritis);
+            }
+            Ingredient::Paracetamol => {
+                self.apply_effects(Effect::Munchies, Effect::AntiGravity, None);
+                self.apply_effects(Effect::Electrifying, Effect::Athletic, None);
+                self.apply_effects(Effect::Paranoia, Effect::Balding, None);
+                self.apply_effects(Effect::Energizing, Effect::Paranoia, Some(!self.effects.contains(&Effect::Munchies)));
+                self.apply_effects(Effect::Energizing, Effect::Balding, Some(!self.effects.contains(&Effect::Paranoia)));
+                self.apply_effects(Effect::Spicy, Effect::BrightEyed, None);
+                self.apply_effects(Effect::Calming, Effect::Slippery, None);
+                self.apply_effects(Effect::Foggy, Effect::Calming, None);
+                self.apply_effects(Effect::Focused, Effect::Gingeritis, None);
+                self.apply_effects(Effect::Toxic, Effect::TropicThunder, None);
+                self.apply_effects(Effect::Glowing, Effect::Toxic, None);
+                self.effects.insert(Effect::Sneaky);
+            }
+            Ingredient::Donut => {
+                self.apply_effects(Effect::Shrinking, Effect::Energizing, None);
+                self.apply_effects(Effect::Focused, Effect::Euphoric, None);
+                self.apply_effects(Effect::CalorieDense, Effect::Explosive, None);
+                self.apply_effects(Effect::Jennerising, Effect::Gingeritis, None);
+                self.apply_effects(Effect::AntiGravity, Effect::Slippery, None);
+                self.apply_effects(Effect::Balding, Effect::Sneaky, None);
+                self.effects.insert(Effect::CalorieDense);
+            }
+            Ingredient::Viagra => {
+                self.apply_effects(Effect::Euphoric, Effect::BrightEyed, None);
+                self.apply_effects(Effect::Laxative, Effect::Calming, None);
+                self.apply_effects(Effect::Athletic, Effect::Sneaky, None);
+                self.apply_effects(Effect::Disorienting, Effect::Toxic, None);
+                self.effects.insert(Effect::TropicThunder);
+            }
+            Ingredient::MouthWash => {
+                self.apply_effects(Effect::Calming, Effect::AntiGravity, None);
+                self.apply_effects(Effect::Focused, Effect::Jennerising, None);
+                self.apply_effects(Effect::Explosive, Effect::Sedating, None);
+                self.apply_effects(Effect::CalorieDense, Effect::Sneaky, None);
+                self.effects.insert(Effect::Balding);
+            }
+            Ingredient::FluMedicine => {
+                self.apply_effects(Effect::Calming, Effect::BrightEyed, None);
+                self.apply_effects(Effect::Focused, Effect::Calming, None);
+                self.apply_effects(Effect::Euphoric, Effect::Toxic, None);
+                self.apply_effects(Effect::Laxative, Effect::Euphoric, None);
+                self.apply_effects(Effect::Cyclopean, Effect::Foggy, None);
+                self.apply_effects(Effect::ThoughtProvoking, Effect::Gingeritis, None);
+                self.apply_effects(Effect::Munchies, Effect::Slippery, None);
+                self.apply_effects(Effect::Athletic, Effect::Munchies, None);
+                self.apply_effects(Effect::Shrinking, Effect::Paranoia, None);
+                self.apply_effects(Effect::Electrifying, Effect::Refreshing, None);
+                self.effects.insert(Effect::Sedating);
+            }
+            Ingredient::Gasoline => {
+                self.apply_effects(Effect::Paranoia, Effect::Calming, None);
+                self.apply_effects(Effect::Disorienting, Effect::Glowing, None);
+                self.apply_effects(Effect::Electrifying, Effect::Disorienting, None);
+                self.apply_effects(Effect::Shrinking, Effect::Focused, None);
+                self.apply_effects(Effect::Laxative, Effect::Foggy, None);
+                self.apply_effects(Effect::Munchies, Effect::Sedating, None);
+                self.apply_effects(Effect::Gingeritis, Effect::Smelly, None);
+                self.apply_effects(Effect::Sneaky, Effect::TropicThunder, None);
+                self.apply_effects(Effect::Jennerising, Effect::Sneaky, None);
+                self.apply_effects(Effect::Euphoric, Effect::Spicy, Some(!self.effects.contains(&Effect::Energizing)));
+                self.apply_effects(Effect::Energizing, Effect::Euphoric, None);
+                self.effects.insert(Effect::Toxic);
+            }
+            Ingredient::EnergyDrink => {
+                self.apply_effects(Effect::Schizophrenia, Effect::Balding, None);
+                self.apply_effects(Effect::Disorienting, Effect::Electrifying, None);
+                self.apply_effects(Effect::Glowing, Effect::Disorienting, None);
+                self.apply_effects(Effect::Euphoric, Effect::Energizing, None);
+                self.apply_effects(Effect::Spicy, Effect::Euphoric, None);
+                self.apply_effects(Effect::Foggy, Effect::Laxative, None);
+                self.apply_effects(Effect::Sedating, Effect::Munchies, None);
+                self.apply_effects(Effect::Focused, Effect::Shrinking, None);
+                self.apply_effects(Effect::TropicThunder, Effect::Sneaky, None);
+                self.effects.insert(Effect::Athletic);
+            }
+            Ingredient::MotorOil => {
+                self.apply_effects(Effect::Paranoia, Effect::AntiGravity, None);
+                self.apply_effects(Effect::Munchies, Effect::Schizophrenia, Some(!self.effects.contains(&Effect::Energizing)));
+                self.apply_effects(Effect::Energizing, Effect::Munchies, None);
+                self.apply_effects(Effect::Euphoric, Effect::Sedating, None);
+                self.apply_effects(Effect::Foggy, Effect::Toxic, None);
+                self.effects.insert(Effect::Slippery);
+            }
+            Ingredient::MegaBean => {
+                self.apply_effects(Effect::Calming, Effect::Glowing, None);
+                self.apply_effects(Effect::Sneaky, Effect::Calming, None);
+                self.apply_effects(Effect::ThoughtProvoking, Effect::Cyclopean, None);
+                self.apply_effects(Effect::Energizing, Effect::Cyclopean, Some(!self.effects.contains(&Effect::ThoughtProvoking)));
+                self.apply_effects(Effect::Focused, Effect::Disorienting, None);
+                self.apply_effects(Effect::Shrinking, Effect::Electrifying, None);
+                self.apply_effects(Effect::SeizureInducing, Effect::Focused, None);
+                self.apply_effects(Effect::Athletic, Effect::Laxative, None);
+                self.apply_effects(Effect::Jennerising, Effect::Paranoia, None);
+                self.apply_effects(Effect::Slippery, Effect::Toxic, None);
+                self.effects.insert(Effect::Foggy);
+            }
+            Ingredient::Chili => {
+                self.apply_effects(Effect::Sneaky, Effect::BrightEyed, None);
+                self.apply_effects(Effect::Athletic, Effect::Euphoric, None);
+                self.apply_effects(Effect::Laxative, Effect::LongFaced, None);
+                self.apply_effects(Effect::Shrinking, Effect::Refreshing, None);
+                self.apply_effects(Effect::Munchies, Effect::Toxic, None);
+                self.apply_effects(Effect::AntiGravity, Effect::TropicThunder, None);
+                self.effects.insert(Effect::Spicy);
+            }
+            Ingredient::Battery => {
+                self.apply_effects(Effect::Laxative, Effect::CalorieDense, None);
+                self.apply_effects(Effect::Euphoric, Effect::Zombifying, Some(!self.effects.contains(&Effect::Electrifying)));
+                self.apply_effects(Effect::Electrifying, Effect::Euphoric, Some(!self.effects.contains(&Effect::Zombifying)));
+                self.apply_effects(Effect::Cyclopean, Effect::Glowing, None);
+                self.apply_effects(Effect::Munchies, Effect::TropicThunder, None);
+                self.apply_effects(Effect::Shrinking, Effect::Munchies, None);
+                self.effects.insert(Effect::BrightEyed);
+            }
+            Ingredient::Iodine => {
+                self.apply_effects(Effect::CalorieDense, Effect::Gingeritis, None);
+                self.apply_effects(Effect::Foggy, Effect::Paranoia, None);
+                self.apply_effects(Effect::Calming, Effect::Balding, None);
+                self.apply_effects(Effect::Euphoric, Effect::SeizureInducing, None);
+                self.apply_effects(Effect::Toxic, Effect::Sneaky, None);
+                self.apply_effects(Effect::Refreshing, Effect::ThoughtProvoking, None);
+                self.effects.insert(Effect::Jennerising);
+            }
+            Ingredient::Addy => {
+                self.apply_effects(Effect::LongFaced, Effect::Electrifying, None);
+                self.apply_effects(Effect::Foggy, Effect::Energizing, None);
+                self.apply_effects(Effect::Explosive, Effect::Euphoric, None);
+                self.apply_effects(Effect::Sedating, Effect::Gingeritis, None);
+                self.apply_effects(Effect::Glowing, Effect::Refreshing, None);
+                self.effects.insert(Effect::ThoughtProvoking);
+            }
+            Ingredient::HorseSemen => {
+                self.apply_effects(Effect::AntiGravity, Effect::Calming, None);
+                self.apply_effects(Effect::ThoughtProvoking, Effect::Electrifying, None);
+                self.apply_effects(Effect::Gingeritis, Effect::Refreshing, None);
+                self.effects.insert(Effect::LongFaced);
+            }
+        }
+        
+        if effects == self.effects {
             // if there are no changes, return self
-            self.clone()
+            return self.clone();
+        }
+        
+        let mut ingredients = self.ingredients.clone();
+        ingredients.push(ingredient);
+        Sellable {
+            base: self.base,
+            ingredients,
+            effects: self.effects.clone(),
         }
     }
     pub fn price(&self) -> f32 {
@@ -170,518 +339,6 @@ impl Ingredient {
             Ingredient::Addy => 9.,
             Ingredient::HorseSemen => 9.,
         }
-    }
-
-    pub fn effect_changes(&self, effects: &HashSet<Effect>) -> HashSet<Effect> {
-        let mut effects = effects.clone();
-        match self {
-            Ingredient::Cuke => {
-                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Athletic) {
-                    effects.remove(&Effect::Munchies);
-                    effects.insert(Effect::Athletic);
-                }
-                if effects.contains(&Effect::Slippery) && effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Athletic) {
-                    effects.remove(&Effect::Slippery);
-                    effects.insert(Effect::Athletic);
-                }
-                if effects.contains(&Effect::Foggy) && !effects.contains(&Effect::Cyclopean) {
-                    effects.remove(&Effect::Foggy);
-                    effects.insert(Effect::Cyclopean);
-                }
-                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Laxative) {
-                    effects.remove(&Effect::Euphoric);
-                    effects.insert(Effect::Laxative);
-                }
-                if effects.contains(&Effect::Toxic) && !effects.contains(&Effect::Euphoric) {
-                    effects.remove(&Effect::Toxic);
-                    effects.insert(Effect::Euphoric);
-                }
-                if effects.contains(&Effect::Slippery) && !effects.contains(&Effect::Munchies) {
-                    effects.remove(&Effect::Slippery);
-                    effects.insert(Effect::Munchies);
-                }
-                if effects.contains(&Effect::Sneaky) && !effects.contains(&Effect::Paranoia) {
-                    effects.remove(&Effect::Sneaky);
-                    effects.insert(Effect::Paranoia);
-                }
-                if effects.contains(&Effect::Gingeritis) && !effects.contains(&Effect::ThoughtProvoking) {
-                    effects.remove(&Effect::Gingeritis);
-                    effects.insert(Effect::ThoughtProvoking);
-                }
-                effects.insert(Effect::Energizing);
-            }
-            Ingredient::Banana => {
-                if effects.contains(&Effect::Smelly) && !effects.contains(&Effect::AntiGravity) {
-                    effects.remove(&Effect::Smelly);
-                    effects.insert(Effect::AntiGravity);
-                }
-                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::SeizureInducing) {
-                    effects.remove(&Effect::Focused);
-                    effects.insert(Effect::SeizureInducing);
-                }
-                if effects.contains(&Effect::Disorienting) && !effects.contains(&Effect::Focused) {
-                    effects.remove(&Effect::Disorienting);
-                    effects.insert(Effect::Focused);
-                }
-                if effects.contains(&Effect::Paranoia) && !effects.contains(&Effect::Jennerising) {
-                    effects.remove(&Effect::Paranoia);
-                    effects.insert(Effect::Jennerising);
-                }
-                if effects.contains(&Effect::LongFaced) && !effects.contains(&Effect::Refreshing) {
-                    effects.remove(&Effect::LongFaced);
-                    effects.insert(Effect::Refreshing);
-                }
-                if effects.contains(&Effect::Toxic) && !effects.contains(&Effect::Smelly) {
-                    effects.remove(&Effect::Toxic);
-                    effects.insert(Effect::Smelly);
-                }
-                if effects.contains(&Effect::Calming) && !effects.contains(&Effect::Sneaky) {
-                    effects.remove(&Effect::Calming);
-                    effects.insert(Effect::Sneaky);
-                }
-                if effects.contains(&Effect::Cyclopean) && !effects.contains(&Effect::ThoughtProvoking) {
-                    effects.remove(&Effect::Cyclopean);
-                    effects.insert(Effect::ThoughtProvoking);
-                }
-                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Cyclopean) && !effects.contains(&Effect::ThoughtProvoking) {
-                    effects.remove(&Effect::Energizing);
-                    effects.insert(Effect::ThoughtProvoking);
-                }
-                effects.insert(Effect::Gingeritis);
-            }
-            Ingredient::Paracetamol => {
-                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::AntiGravity) {
-                    effects.remove(&Effect::Munchies);
-                    effects.insert(Effect::AntiGravity);
-                }
-                if effects.contains(&Effect::Electrifying) && !effects.contains(&Effect::Athletic) {
-                    effects.remove(&Effect::Electrifying);
-                    effects.insert(Effect::Athletic);
-                }
-                if effects.contains(&Effect::Paranoia) && !effects.contains(&Effect::Balding) {
-                    effects.remove(&Effect::Paranoia);
-                    effects.insert(Effect::Balding);
-                }
-                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Paranoia) {
-                    effects.remove(&Effect::Energizing);
-                    effects.insert(Effect::Paranoia);
-                }
-                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Paranoia) && !effects.contains(&Effect::Balding) {
-                    effects.remove(&Effect::Energizing);
-                    effects.insert(Effect::Balding);
-                }
-                if effects.contains(&Effect::Spicy) && !effects.contains(&Effect::BrightEyed) {
-                    effects.remove(&Effect::Spicy);
-                    effects.insert(Effect::BrightEyed);
-                }
-                if effects.contains(&Effect::Calming) && !effects.contains(&Effect::Slippery) {
-                    effects.remove(&Effect::Calming);
-                    effects.insert(Effect::Slippery);
-                }
-                if effects.contains(&Effect::Foggy) && !effects.contains(&Effect::Calming) {
-                    effects.remove(&Effect::Foggy);
-                    effects.insert(Effect::Calming);
-                }
-                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::Gingeritis) {
-                    effects.remove(&Effect::Focused);
-                    effects.insert(Effect::Gingeritis);
-                }
-                if effects.contains(&Effect::Toxic) && !effects.contains(&Effect::TropicThunder) {
-                    effects.remove(&Effect::Toxic);
-                    effects.insert(Effect::TropicThunder);
-                }
-                if effects.contains(&Effect::Glowing) && !effects.contains(&Effect::Toxic) {
-                    effects.remove(&Effect::Glowing);
-                    effects.insert(Effect::Toxic);
-                }
-                effects.insert(Effect::Sneaky);
-            }
-            Ingredient::Donut => {
-                if effects.contains(&Effect::Shrinking) && !effects.contains(&Effect::Energizing) {
-                    effects.remove(&Effect::Shrinking);
-                    effects.insert(Effect::Energizing);
-                }
-                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::Euphoric) {
-                    effects.remove(&Effect::Focused);
-                    effects.insert(Effect::Euphoric);
-                }
-                if effects.contains(&Effect::CalorieDense) && !effects.contains(&Effect::Explosive)
-                {
-                    effects.remove(&Effect::CalorieDense);
-                    effects.insert(Effect::Explosive);
-                }
-                if effects.contains(&Effect::Jennerising) && !effects.contains(&Effect::Gingeritis) {
-                    effects.remove(&Effect::Jennerising);
-                    effects.insert(Effect::Gingeritis);
-                }
-                if effects.contains(&Effect::AntiGravity) && !effects.contains(&Effect::Slippery) {
-                    effects.remove(&Effect::AntiGravity);
-                    effects.insert(Effect::Slippery);
-                }
-                if effects.contains(&Effect::Balding) && !effects.contains(&Effect::Sneaky) {
-                    effects.remove(&Effect::Balding);
-                    effects.insert(Effect::Sneaky);
-                }
-                effects.insert(Effect::CalorieDense);
-            }
-            Ingredient::Viagra => {
-                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::BrightEyed) {
-                    effects.remove(&Effect::Euphoric);
-                    effects.insert(Effect::BrightEyed);
-                }
-                if effects.contains(&Effect::Laxative) && !effects.contains(&Effect::Calming) {
-                    effects.remove(&Effect::Laxative);
-                    effects.insert(Effect::Calming);
-                }
-                if effects.contains(&Effect::Athletic) && !effects.contains(&Effect::Sneaky) {
-                    effects.remove(&Effect::Athletic);
-                    effects.insert(Effect::Sneaky);
-                }
-                if effects.contains(&Effect::Disorienting) && !effects.contains(&Effect::Toxic) {
-                    effects.remove(&Effect::Disorienting);
-                    effects.insert(Effect::Toxic);
-                }
-                effects.insert(Effect::TropicThunder);
-            }
-            Ingredient::MouthWash => {
-                if effects.contains(&Effect::Calming) && !effects.contains(&Effect::AntiGravity) {
-                    effects.remove(&Effect::Calming);
-                    effects.insert(Effect::AntiGravity);
-                }
-                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::Jennerising) {
-                    effects.remove(&Effect::Focused);
-                    effects.insert(Effect::Jennerising);
-                }
-                if effects.contains(&Effect::Explosive) && !effects.contains(&Effect::Sedating) {
-                    effects.remove(&Effect::Explosive);
-                    effects.insert(Effect::Sedating);
-                }
-                if effects.contains(&Effect::CalorieDense) && !effects.contains(&Effect::Sneaky) {
-                    effects.remove(&Effect::CalorieDense);
-                    effects.insert(Effect::Sneaky);
-                }
-                effects.insert(Effect::Balding);
-            }
-            Ingredient::FluMedicine => {
-                if effects.contains(&Effect::Calming) && !effects.contains(&Effect::BrightEyed) {
-                    effects.remove(&Effect::Calming);
-                    effects.insert(Effect::BrightEyed);
-                }
-                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::Calming) {
-                    effects.remove(&Effect::Focused);
-                    effects.insert(Effect::Calming);
-                }
-                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Toxic) {
-                    effects.remove(&Effect::Euphoric);
-                    effects.insert(Effect::Toxic);
-                }
-                if effects.contains(&Effect::Laxative) && !effects.contains(&Effect::Euphoric) {
-                    effects.remove(&Effect::Laxative);
-                    effects.insert(Effect::Euphoric);
-                }
-                if effects.contains(&Effect::Cyclopean) && !effects.contains(&Effect::Foggy) {
-                    effects.remove(&Effect::Cyclopean);
-                    effects.insert(Effect::Foggy);
-                }
-                if effects.contains(&Effect::ThoughtProvoking) && !effects.contains(&Effect::Gingeritis) {
-                    effects.remove(&Effect::ThoughtProvoking);
-                    effects.insert(Effect::Gingeritis);
-                }
-                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Slippery) {
-                    effects.remove(&Effect::Munchies);
-                    effects.insert(Effect::Slippery);
-                }
-                if effects.contains(&Effect::Athletic) && !effects.contains(&Effect::Munchies) {
-                    effects.remove(&Effect::Athletic);
-                    effects.insert(Effect::Munchies);
-                }
-                if effects.contains(&Effect::Shrinking) && !effects.contains(&Effect::Paranoia) {
-                    effects.remove(&Effect::Shrinking);
-                    effects.insert(Effect::Paranoia);
-                }
-                if effects.contains(&Effect::Electrifying) && !effects.contains(&Effect::Refreshing) {
-                    effects.remove(&Effect::Electrifying);
-                    effects.insert(Effect::Refreshing);
-                }
-                effects.insert(Effect::Sedating);
-            }
-            Ingredient::Gasoline => {
-                if effects.contains(&Effect::Paranoia) && !effects.contains(&Effect::Calming) {
-                    effects.remove(&Effect::Paranoia);
-                    effects.insert(Effect::Calming);
-                }
-                if effects.contains(&Effect::Disorienting) && !effects.contains(&Effect::Glowing) {
-                    effects.remove(&Effect::Disorienting);
-                    effects.insert(Effect::Glowing);
-                }
-                if effects.contains(&Effect::Electrifying) && !effects.contains(&Effect::Disorienting) {
-                    effects.remove(&Effect::Electrifying);
-                    effects.insert(Effect::Disorienting);
-                }
-                if effects.contains(&Effect::Shrinking) && !effects.contains(&Effect::Focused) {
-                    effects.remove(&Effect::Shrinking);
-                    effects.insert(Effect::Focused);
-                }
-                if effects.contains(&Effect::Laxative) && !effects.contains(&Effect::Foggy) {
-                    effects.remove(&Effect::Laxative);
-                    effects.insert(Effect::Foggy);
-                }
-                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Sedating) {
-                    effects.remove(&Effect::Munchies);
-                    effects.insert(Effect::Sedating);
-                }
-                if effects.contains(&Effect::Gingeritis) && !effects.contains(&Effect::Smelly) {
-                    effects.remove(&Effect::Gingeritis);
-                    effects.insert(Effect::Smelly);
-                }
-                if effects.contains(&Effect::Sneaky) && !effects.contains(&Effect::TropicThunder) {
-                    effects.remove(&Effect::Sneaky);
-                    effects.insert(Effect::TropicThunder);
-                }
-                if effects.contains(&Effect::Jennerising) && !effects.contains(&Effect::Sneaky) {
-                    effects.remove(&Effect::Jennerising);
-                    effects.insert(Effect::Sneaky);
-                }
-                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Spicy) {
-                    effects.remove(&Effect::Euphoric);
-                    effects.insert(Effect::Spicy);
-                }
-                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Euphoric) {
-                    effects.remove(&Effect::Energizing);
-                    effects.insert(Effect::Euphoric);
-                }
-                effects.insert(Effect::Toxic);
-            }
-            Ingredient::EnergyDrink => {
-                if effects.contains(&Effect::Schizophrenia) && !effects.contains(&Effect::Balding) {
-                    effects.remove(&Effect::Schizophrenia);
-                    effects.insert(Effect::Balding);
-                }
-                if effects.contains(&Effect::Disorienting) && !effects.contains(&Effect::Electrifying) {
-                    effects.remove(&Effect::Disorienting);
-                    effects.insert(Effect::Electrifying);
-                }
-                if effects.contains(&Effect::Glowing) && !effects.contains(&Effect::Disorienting) {
-                    effects.remove(&Effect::Glowing);
-                    effects.insert(Effect::Disorienting);
-                }
-                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Energizing) {
-                    effects.remove(&Effect::Euphoric);
-                    effects.insert(Effect::Energizing);
-                }
-                if effects.contains(&Effect::Spicy) && !effects.contains(&Effect::Euphoric) {
-                    effects.remove(&Effect::Spicy);
-                    effects.insert(Effect::Euphoric);
-                }
-                if effects.contains(&Effect::Foggy) && !effects.contains(&Effect::Laxative) {
-                    effects.remove(&Effect::Foggy);
-                    effects.insert(Effect::Laxative);
-                }
-                if effects.contains(&Effect::Sedating) && !effects.contains(&Effect::Munchies) {
-                    effects.remove(&Effect::Sedating);
-                    effects.insert(Effect::Munchies);
-                }
-                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::Shrinking) {
-                    effects.remove(&Effect::Focused);
-                    effects.insert(Effect::Shrinking);
-                }
-                if effects.contains(&Effect::TropicThunder) && !effects.contains(&Effect::Sneaky) {
-                    effects.remove(&Effect::TropicThunder);
-                    effects.insert(Effect::Sneaky);
-                }
-                effects.insert(Effect::Athletic);
-            }
-            Ingredient::MotorOil => {
-                if effects.contains(&Effect::Paranoia) && !effects.contains(&Effect::AntiGravity) {
-                    effects.remove(&Effect::Paranoia);
-                    effects.insert(Effect::AntiGravity);
-                }
-                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Schizophrenia) {
-                    effects.remove(&Effect::Munchies);
-                    effects.insert(Effect::Schizophrenia);
-                }
-                if effects.contains(&Effect::Energizing) && !effects.contains(&Effect::Munchies) {
-                    effects.remove(&Effect::Energizing);
-                    effects.insert(Effect::Munchies);
-                }
-                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Sedating) {
-                    effects.remove(&Effect::Euphoric);
-                    effects.insert(Effect::Sedating);
-                }
-                if effects.contains(&Effect::Foggy) && !effects.contains(&Effect::Toxic) {
-                    effects.remove(&Effect::Foggy);
-                    effects.insert(Effect::Toxic);
-                }
-                effects.insert(Effect::Slippery);
-            }
-            Ingredient::MegaBean => {
-                if effects.contains(&Effect::Calming) && !effects.contains(&Effect::Glowing) {
-                    effects.remove(&Effect::Calming);
-                    effects.insert(Effect::Glowing);
-                }
-                if effects.contains(&Effect::Sneaky) && !effects.contains(&Effect::Calming) {
-                    effects.remove(&Effect::Sneaky);
-                    effects.insert(Effect::Calming);
-                }
-                if effects.contains(&Effect::ThoughtProvoking) && !effects.contains(&Effect::Cyclopean) {
-                    effects.remove(&Effect::ThoughtProvoking);
-                    effects.insert(Effect::Cyclopean);
-                }
-                if effects.contains(&Effect::Energizing)
-                    && !effects.contains(&Effect::ThoughtProvoking)
-                    && !effects.contains(&Effect::Cyclopean)
-                {
-                    effects.remove(&Effect::Energizing);
-                    effects.insert(Effect::Cyclopean);
-                }
-                if effects.contains(&Effect::Focused) && !effects.contains(&Effect::Disorienting) {
-                    effects.remove(&Effect::Focused);
-                    effects.insert(Effect::Disorienting);
-                }
-                if effects.contains(&Effect::Shrinking) && !effects.contains(&Effect::Electrifying) {
-                    effects.remove(&Effect::Shrinking);
-                    effects.insert(Effect::Electrifying);
-                }
-                if effects.contains(&Effect::SeizureInducing) && !effects.contains(&Effect::Focused) {
-                    effects.remove(&Effect::SeizureInducing);
-                    effects.insert(Effect::Focused);
-                }
-                if effects.contains(&Effect::Athletic) && !effects.contains(&Effect::Laxative) {
-                    effects.remove(&Effect::Athletic);
-                    effects.insert(Effect::Laxative);
-                }
-                if effects.contains(&Effect::Jennerising) && !effects.contains(&Effect::Paranoia) {
-                    effects.remove(&Effect::Jennerising);
-                    effects.insert(Effect::Paranoia);
-                }
-                if effects.contains(&Effect::Slippery) && !effects.contains(&Effect::Toxic) {
-                    effects.remove(&Effect::Slippery);
-                    effects.insert(Effect::Toxic);
-                }
-                effects.insert(Effect::Foggy);
-            }
-            Ingredient::Chili => {
-                if effects.contains(&Effect::Sneaky) && !effects.contains(&Effect::BrightEyed) {
-                    effects.remove(&Effect::Sneaky);
-                    effects.insert(Effect::BrightEyed);
-                }
-                if effects.contains(&Effect::Athletic) && !effects.contains(&Effect::Euphoric) {
-                    effects.remove(&Effect::Athletic);
-                    effects.insert(Effect::Euphoric);
-                }
-                if effects.contains(&Effect::Laxative) && !effects.contains(&Effect::LongFaced) {
-                    effects.remove(&Effect::Laxative);
-                    effects.insert(Effect::LongFaced);
-                }
-                if effects.contains(&Effect::Shrinking) && !effects.contains(&Effect::Refreshing) {
-                    effects.remove(&Effect::Shrinking);
-                    effects.insert(Effect::Refreshing);
-                }
-                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::Toxic) {
-                    effects.remove(&Effect::Munchies);
-                    effects.insert(Effect::Toxic);
-                }
-                if effects.contains(&Effect::AntiGravity) && !effects.contains(&Effect::TropicThunder) {
-                    effects.remove(&Effect::AntiGravity);
-                    effects.insert(Effect::TropicThunder);
-                }
-                effects.insert(Effect::Spicy);
-            }
-            Ingredient::Battery => {
-                if effects.contains(&Effect::Laxative) && !effects.contains(&Effect::CalorieDense) {
-                    effects.remove(&Effect::Laxative);
-                    effects.insert(Effect::CalorieDense);
-                }
-                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::Electrifying) && !effects.contains(&Effect::Zombifying) {
-                    effects.remove(&Effect::Euphoric);
-                    effects.insert(Effect::Zombifying);
-                }
-                if effects.contains(&Effect::Electrifying) && !effects.contains(&Effect::Zombifying) && !effects.contains(&Effect::Euphoric)
-                {
-                    effects.remove(&Effect::Electrifying);
-                    effects.insert(Effect::Euphoric);
-                }
-                if effects.contains(&Effect::Cyclopean) && !effects.contains(&Effect::Glowing) {
-                    effects.remove(&Effect::Cyclopean);
-                    effects.insert(Effect::Glowing);
-                }
-                if effects.contains(&Effect::Munchies) && !effects.contains(&Effect::TropicThunder) {
-                    effects.remove(&Effect::Munchies);
-                    effects.insert(Effect::TropicThunder);
-                }
-                if effects.contains(&Effect::Shrinking) && !effects.contains(&Effect::Munchies) {
-                    effects.remove(&Effect::Shrinking);
-                    effects.insert(Effect::Munchies);
-                }
-                effects.insert(Effect::BrightEyed);
-            }
-            Ingredient::Iodine => {
-                if effects.contains(&Effect::CalorieDense) && !effects.contains(&Effect::Gingeritis) {
-                    effects.insert(Effect::CalorieDense);
-                    effects.insert(Effect::Gingeritis);
-                }
-                if effects.contains(&Effect::Foggy) && !effects.contains(&Effect::Paranoia) {
-                    effects.remove(&Effect::Foggy);
-                    effects.insert(Effect::Paranoia);
-                }
-                if effects.contains(&Effect::Calming) && !effects.contains(&Effect::Balding) {
-                    effects.remove(&Effect::Calming);
-                    effects.insert(Effect::Balding);
-                }
-                if effects.contains(&Effect::Euphoric) && !effects.contains(&Effect::SeizureInducing) {
-                    effects.remove(&Effect::Euphoric);
-                    effects.insert(Effect::SeizureInducing);
-                }
-                if effects.contains(&Effect::Toxic) && !effects.contains(&Effect::Sneaky) {
-                    effects.remove(&Effect::Toxic);
-                    effects.insert(Effect::Sneaky);
-                }
-                if effects.contains(&Effect::Refreshing) && !effects.contains(&Effect::ThoughtProvoking) {
-                    effects.remove(&Effect::Refreshing);
-                    effects.insert(Effect::ThoughtProvoking);
-                }
-                effects.insert(Effect::Jennerising);
-            }
-            Ingredient::Addy => {
-                if effects.contains(&Effect::LongFaced) && !effects.contains(&Effect::Electrifying) {
-                    effects.remove(&Effect::LongFaced);
-                    effects.insert(Effect::Electrifying);
-                }
-                if effects.contains(&Effect::Foggy) && !effects.contains(&Effect::Energizing) {
-                    effects.remove(&Effect::Foggy);
-                    effects.insert(Effect::Energizing);
-                }
-                if effects.contains(&Effect::Explosive) && !effects.contains(&Effect::Euphoric) {
-                    effects.remove(&Effect::Explosive);
-                    effects.insert(Effect::Euphoric);
-                }
-                if effects.contains(&Effect::Sedating) && !effects.contains(&Effect::Gingeritis) {
-                    effects.remove(&Effect::Sedating);
-                    effects.insert(Effect::Gingeritis);
-                }
-                if effects.contains(&Effect::Glowing) && !effects.contains(&Effect::Refreshing) {
-                    effects.remove(&Effect::Glowing);
-                    effects.insert(Effect::Refreshing);
-                }
-                effects.insert(Effect::ThoughtProvoking);
-            }
-            Ingredient::HorseSemen => {
-                if effects.contains(&Effect::AntiGravity) && !effects.contains(&Effect::Calming) {
-                    effects.remove(&Effect::AntiGravity);
-                    effects.insert(Effect::Calming);
-                }
-                if effects.contains(&Effect::ThoughtProvoking) && !effects.contains(&Effect::Electrifying) {
-                    effects.remove(&Effect::ThoughtProvoking);
-                    effects.insert(Effect::Electrifying);
-                }
-                if effects.contains(&Effect::Gingeritis) && !effects.contains(&Effect::Refreshing) {
-                    effects.remove(&Effect::Gingeritis);
-                    effects.insert(Effect::Refreshing);
-                }
-                effects.insert(Effect::LongFaced);
-            }
-        }
-        effects
     }
 }
 
