@@ -1,10 +1,10 @@
-use crate::components::Button;
+use crate::components::{Button, IconButton};
 use crate::sellable::{Ingredient, Product, Quality, Sellable};
 use dioxus::prelude::*;
-use std::collections::HashSet;
+use dioxus_free_icons::icons::hi_outline_icons::{HiBookmark, HiBookmarkAlt};
+use std::collections::HashMap;
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
-const HEADER_SVG: Asset = asset!("/assets/header.svg");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
 
 mod components;
@@ -17,7 +17,7 @@ fn main() {
 #[component]
 fn App() -> Element {
     let mut working_product = use_signal(|| Sellable::from_product(Product::OGKush));
-    let mut saved_recipes: Signal<Vec<Sellable>> = use_signal(|| Vec::new());
+    let mut saved_recipes: Signal<HashMap<String,Sellable>> = use_signal(|| HashMap::new());
     rsx! {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
@@ -54,12 +54,35 @@ fn App() -> Element {
                 if !saved_recipes.read().is_empty() {
                     div { class: "col-span-full", "Saved Recipes" }
                     for recipe in saved_recipes.read().iter() {
-                        Button { onclick: move |_| {}, "{recipe.base:?}" }
+                        Button {
+                            onclick: move |_| {
+                                // working_product.set(Sellable::from_product(recipe.1.base));
+                            },
+                            "{recipe.1.base:?}"
+                        }
                     }
                 }
             }
             div {
                 class: "grid grid-cols-2 gap-4 content-start",
+                div {
+                    class: "col-span-full",
+                    if saved_recipes.read().contains_key(&working_product.read().key()) {
+                        IconButton {
+                            icon: HiBookmarkAlt,
+                            onclick: move |_| {
+                                saved_recipes.write().remove(&working_product.read().key());
+                            }
+                        }
+                    } else {
+                        IconButton {
+                            icon: HiBookmark,
+                            onclick: move |_| {
+                                saved_recipes.write().insert(working_product.read().key(), working_product.read().clone());
+                            }
+                        }
+                    },
+                }
                 div { "Based on:" }
                 div { class: "justify-self-end", "Price:" }
                 div {"{working_product.read().base:?}"}

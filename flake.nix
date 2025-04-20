@@ -136,7 +136,14 @@
 
             commands = [
               {
-                package = pkgs.dioxus-cli;
+                name = "watch-tailwind";
+                help = "Start tailwind in watch mode";
+                command = "tailwindcss -i ./input.css -o ./assets/tailwind.css --watch";
+              }
+              {
+                name = "dev";
+                help = "Start dx serve dev server";
+                command = "dx serve";
               }
             ];
 
@@ -144,6 +151,7 @@
               with pkgs;
               [
                 dioxus-cli
+                tailwindcss_4
                 self'.packages.rustToolchain
                 pkg-config
                 rustPlatform.bindgenHook
