@@ -18,9 +18,8 @@ pub fn IconButton<T: IconShape + Clone + PartialEq + 'static>(
             onclick: move |evt| props.onclick.call(evt),
             {props.children}
             Icon {
-                class: "text-white",
                 icon: props.icon,
-                fill: "transparent",
+                fill: "white",
             }
         }
     }

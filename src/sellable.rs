@@ -3,6 +3,7 @@ use std::collections::HashSet;
 #[derive(Clone, Debug)]
 pub struct Sellable {
     pub base: Product,
+    pub name: String,
     pub effects: HashSet<Effect>,
     pub ingredients: Vec<Ingredient>,
 }
@@ -32,6 +33,7 @@ impl Sellable {
             base: product,
             effects,
             ingredients: Vec::new(),
+            name: format!("{:?}", product),
         }
     }
 
@@ -258,7 +260,14 @@ impl Sellable {
             base: self.base,
             ingredients,
             effects: self.effects.clone(),
+            name: format!("{} + {:?}", self.name, ingredient),
         }
+    }
+    
+    pub fn with_name(&self, name: String) -> Self {
+        let mut new = self.clone();
+        new.name = name;
+        new
     }
 
     pub fn price(&self) -> f32 {

@@ -157,6 +157,7 @@
                 rustPlatform.bindgenHook
                 cargo-watch
                 systemfd
+                wasm-bindgen-cli_0_2_100
               ]
               ++ lib.optionals stdenv.isDarwin [ darwin.apple_sdk.frameworks.SystemConfiguration ];
 

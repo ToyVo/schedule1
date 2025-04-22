@@ -1,7 +1,7 @@
 use crate::components::{Button, IconButton};
 use crate::sellable::{Ingredient, Product, Quality, Sellable};
 use dioxus::prelude::*;
-use dioxus_free_icons::icons::hi_outline_icons::{HiBookmark, HiBookmarkAlt};
+use dioxus_free_icons::icons::go_icons::{GoBookmark, GoBookmarkSlash};
 use std::collections::HashMap;
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
@@ -17,7 +17,8 @@ fn main() {
 #[component]
 fn App() -> Element {
     let mut working_product = use_signal(|| Sellable::from_product(Product::OGKush));
-    let mut saved_recipes: Signal<HashMap<String,Sellable>> = use_signal(|| HashMap::new());
+    let mut saved_recipes = use_signal(HashMap::<String, Sellable>::new);
+    let mut use_pgr = use_signal(|| false);
     rsx! {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
@@ -53,40 +54,73 @@ fn App() -> Element {
                 Button { onclick: move |_| working_product.set(working_product().add_ingredient(Ingredient::HorseSemen)), "Horse Semen" }
                 if !saved_recipes.read().is_empty() {
                     div { class: "col-span-full", "Saved Recipes" }
-                    for recipe in saved_recipes.read().iter() {
-                        Button {
-                            onclick: move |_| {
-                                // working_product.set(Sellable::from_product(recipe.1.base));
-                            },
-                            "{recipe.1.base:?}"
+                    {saved_recipes.read().iter().map(|(key, recipe)| {
+                        let recipe_clone = recipe.clone();
+                        rsx! {
+                            Button {
+                                key: "{key}",
+                                onclick: move |_| {
+                                    working_product.set(recipe_clone.clone());
+                                },
+                                "{recipe.name}"
+                            }
                         }
-                    }
+                    })}
                 }
             }
             div {
                 class: "grid grid-cols-2 gap-4 content-start",
                 div {
-                    class: "col-span-full",
+                    class: "col-span-full flex gap-2",
                     if saved_recipes.read().contains_key(&working_product.read().key()) {
                         IconButton {
-                            icon: HiBookmarkAlt,
+                            icon: GoBookmarkSlash,
                             onclick: move |_| {
                                 saved_recipes.write().remove(&working_product.read().key());
                             }
                         }
                     } else {
                         IconButton {
-                            icon: HiBookmark,
+                            icon: GoBookmark,
                             onclick: move |_| {
                                 saved_recipes.write().insert(working_product.read().key(), working_product.read().clone());
                             }
                         }
                     },
+                    input {
+                        class: "grow",
+                        value: "{working_product.read().name}",
+                        oninput: move |event| working_product.set(working_product().with_name(event.value())),
+                    }
                 }
                 div { "Based on:" }
                 div { class: "justify-self-end", "Price:" }
                 div {"{working_product.read().base:?}"}
                 div { class: "justify-self-end", "{working_product.read().base.price()}" }
+                if use_pgr() {
+                    div { "PGR" }
+                    div { class: "justify-self-end", "30" }
+                }
+                div { class: "border col-span-full" }
+                label {
+                    class: "flex gap-2",
+                    "Use PGR",
+                    input {
+                        r#type: "checkbox",
+                        checked: "{use_pgr()}",
+                        onchange: move |_| {
+                            use_pgr.set(!use_pgr());
+                        }
+                    }
+                }
+                div {
+                    class: "justify-self-end",
+                    if use_pgr() {
+                        "/16"
+                    } else {
+                        "/12"
+                    }
+                }
                 if !working_product.read().ingredients.is_empty() {
                     div { class: "col-span-full", "With:" }
                     for ingredient in working_product.read().ingredients.iter() {
