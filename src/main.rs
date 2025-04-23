@@ -27,7 +27,7 @@ fn App() -> Element {
             class: "grid gap-4",
             style: "grid-template-columns: minmax(365px, 1fr) minmax(240px, 1fr) minmax(150px, 1fr)",
             div {
-                class: "grid grid-cols-3 gap-4",
+                class: "grid grid-cols-3 gap-4 content-start",
                 div { class: "col-span-full", "Base Product" }
                 Button { onclick: move |_| working_product.set(Sellable::from_product(Product::OGKush)), "OG Kush" }
                 Button { onclick: move |_| working_product.set(Sellable::from_product(Product::SourDiesel)), "Sour Diesel" }
