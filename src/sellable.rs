@@ -1,5 +1,21 @@
 use std::collections::HashSet;
 
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub enum OneTimeIngredient {
+    PGR,
+    Fertilizer,
+    SpeedGrow,
+}
+
+#[derive(Clone, Default)]
+pub struct MixState {
+    pub ingredients: HashSet<OneTimeIngredient>,
+    pub soil_quality: Quality,
+    pub psudo_quality: Quality,
+    /// in oposition to using a grow tent
+    pub use_pot: bool,
+}
+
 #[derive(Clone, Debug)]
 pub struct Sellable {
     pub base: Product,
@@ -33,7 +49,7 @@ impl Sellable {
             base: product,
             effects,
             ingredients: Vec::new(),
-            name: format!("{:?}", product),
+            name: product.to_string(),
         }
     }
 
@@ -263,15 +279,52 @@ impl Sellable {
             name: format!("{} + {:?}", self.name, ingredient),
         }
     }
-    
+
     pub fn with_name(&self, name: String) -> Self {
         let mut new = self.clone();
         new.name = name;
         new
     }
 
-    pub fn price(&self) -> f32 {
-        let mut price = self.base.price();
+    pub fn unit_price(&self, state: MixState) -> f32 {
+        self.base.price(state.clone()) / self.yield_amount(state.clone())
+    }
+
+    pub fn price(&self, state: MixState) -> f32 {
+        let mut price = self.unit_price(state.clone());
+        let soil_price = match state.soil_quality {
+            Quality::Low => 10.,
+            Quality::Medium => 30.,
+            Quality::High => 60.,
+        };
+        let pgr_price = if state.ingredients.contains(&OneTimeIngredient::PGR) {
+            30.
+        } else {
+            0.
+        };
+        let fertilizer_price = if state.ingredients.contains(&OneTimeIngredient::Fertilizer) {
+            30.
+        } else {
+            0.
+        };
+        let speed_grow_price = if state.ingredients.contains(&OneTimeIngredient::SpeedGrow) {
+            30.
+        } else {
+            0.
+        };
+        price += match (self.base,) {
+            (
+                Product::OGKush
+                | Product::GreenCrack
+                | Product::SourDiesel
+                | Product::GranddaddyPurple
+                | Product::Cocaine,
+            ) => {
+                (soil_price + pgr_price + fertilizer_price + speed_grow_price)
+                    / self.yield_amount(state.clone())
+            }
+            _ => 0.,
+        };
         for ingredient in &self.ingredients {
             price += ingredient.price();
         }
@@ -291,13 +344,56 @@ impl Sellable {
         key
     }
 
-    pub fn save(&self) -> (String, Self) {
-        (self.key(), self.clone())
+    pub fn yield_amount(&self, state: MixState) -> f32 {
+        match (
+            self.base,
+            state.use_pot,
+            state.ingredients.contains(&OneTimeIngredient::PGR),
+        ) {
+            (
+                Product::OGKush
+                | Product::GreenCrack
+                | Product::SourDiesel
+                | Product::GranddaddyPurple,
+                false,
+                false,
+            ) => 8.,
+            (
+                Product::OGKush
+                | Product::GreenCrack
+                | Product::SourDiesel
+                | Product::GranddaddyPurple,
+                true,
+                false,
+            ) => 12.,
+            (
+                Product::OGKush
+                | Product::GreenCrack
+                | Product::SourDiesel
+                | Product::GranddaddyPurple,
+                false,
+                true,
+            ) => 12.,
+            (
+                Product::OGKush
+                | Product::GreenCrack
+                | Product::SourDiesel
+                | Product::GranddaddyPurple,
+                true,
+                true,
+            ) => 16.,
+            (Product::Cocaine, false, false) => 6.,
+            (Product::Cocaine, true, false) => 9.,
+            (Product::Cocaine, false, true) => 11.,
+            (Product::Cocaine, true, true) => 16.,
+            (Product::Meth, _, _) => 10.,
+        }
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum Quality {
+    #[default]
     Low,
     Medium,
     High,
@@ -309,18 +405,18 @@ pub enum Product {
     SourDiesel,
     GreenCrack,
     GranddaddyPurple,
-    Meth(Quality),
+    Meth,
     Cocaine,
 }
 
 impl Product {
-    pub fn price(&self) -> f32 {
+    pub fn price(&self, state: MixState) -> f32 {
         match self {
             Product::OGKush => 30.,
             Product::SourDiesel => 35.,
             Product::GreenCrack => 40.,
             Product::GranddaddyPurple => 45.,
-            Product::Meth(quality) => match quality {
+            Product::Meth => match state.psudo_quality {
                 Quality::Low => 60.,
                 Quality::Medium => 80.,
                 Quality::High => 110.,
@@ -335,7 +431,7 @@ impl Product {
             Product::SourDiesel => HashSet::from([Effect::Refreshing]),
             Product::GreenCrack => HashSet::from([Effect::Energizing]),
             Product::GranddaddyPurple => HashSet::from([Effect::Sedating]),
-            Product::Meth(_) => HashSet::new(),
+            Product::Meth => HashSet::new(),
             Product::Cocaine => HashSet::new(),
         }
     }
@@ -346,7 +442,7 @@ impl Product {
             Product::SourDiesel => 40.,
             Product::GreenCrack => 43.,
             Product::GranddaddyPurple => 44.,
-            Product::Meth(_) => 70.,
+            Product::Meth => 70.,
             Product::Cocaine => 150.,
         }
     }
@@ -354,11 +450,24 @@ impl Product {
     pub fn addictiveness(&self) -> f32 {
         match self {
             Product::OGKush => 0.,
-            Product::SourDiesel => 0.1,
-            Product::GreenCrack => 0.34,
+            Product::SourDiesel => 10.,
+            Product::GreenCrack => 34.,
             Product::GranddaddyPurple => 0.,
-            Product::Meth(_) => 0.6,
-            Product::Cocaine => 0.4,
+            Product::Meth => 60.,
+            Product::Cocaine => 40.,
+        }
+    }
+}
+
+impl std::fmt::Display for Product {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Product::OGKush => write!(f, "OG Kush"),
+            Product::SourDiesel => write!(f, "Sour Diesel"),
+            Product::GreenCrack => write!(f, "Green Crack"),
+            Product::GranddaddyPurple => write!(f, "Granddaddy Purple"),
+            Product::Meth => write!(f, "Meth"),
+            Product::Cocaine => write!(f, "Cocaine"),
         }
     }
 }
@@ -491,7 +600,7 @@ mod tests {
 
     #[test]
     fn test_mix_1() {
-        let mut mix = Sellable::from_product(Product::Meth(Quality::Medium));
+        let mut mix = Sellable::from_product(Product::Meth);
         assert!(mix.effects.is_empty());
         mix = mix.add_ingredient(Ingredient::Cuke);
         assert_eq!(mix.effects, HashSet::from([Effect::Energizing]));
@@ -588,7 +697,7 @@ mod tests {
             HashSet::from([Effect::Calming, Effect::ThoughtProvoking]),
         );
         // assert_eq!(mix.sell_price().round(), 54.);
-        // assert_eq!(mix.addictiveness(), 0.42);
+        // assert_eq!(mix.addictiveness(), 42.);
     }
     #[test]
     fn test_sour_addy() {
@@ -598,7 +707,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::ThoughtProvoking]),
         );
         // assert_eq!(mix.sell_price().round(), 55.);
-        // assert_eq!(mix.addictiveness(), 0.52);
+        // assert_eq!(mix.addictiveness(), 52.);
     }
     #[test]
     fn test_green_addy() {
@@ -608,22 +717,21 @@ mod tests {
             HashSet::from([Effect::Energizing, Effect::ThoughtProvoking]),
         );
         // assert_eq!(mix.sell_price().round(), 58.);
-        // assert_eq!(mix.addictiveness(), 0.76);
+        // assert_eq!(mix.addictiveness(), 76.);
     }
     #[test]
     fn test_meth_addy() {
-        let mix =
-            Sellable::from_product(Product::Meth(Quality::High)).add_ingredient(Ingredient::Addy);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::Addy);
         assert_eq!(mix.effects, HashSet::from([Effect::ThoughtProvoking]),);
         // assert_eq!(mix.sell_price().round(), 101.);
-        // assert_eq!(mix.addictiveness(), 0.97);
+        // assert_eq!(mix.addictiveness(), 97.);
     }
     #[test]
     fn test_cocaine_addy() {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::Addy);
         assert_eq!(mix.effects, HashSet::from([Effect::ThoughtProvoking]),);
         // assert_eq!(mix.sell_price().round(), 216.);
-        // assert_eq!(mix.addictiveness(), 0.77);
+        // assert_eq!(mix.addictiveness(), 77.);
     }
     #[test]
     fn test_og_banana() {
@@ -633,7 +741,7 @@ mod tests {
             HashSet::from([Effect::Gingeritis, Effect::Sneaky]),
         );
         // assert_eq!(mix.sell_price().round(), 50.);
-        // assert_eq!(mix.addictiveness(), 0.37);
+        // assert_eq!(mix.addictiveness(), 37.);
     }
     #[test]
     fn test_sour_banana() {
@@ -643,7 +751,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::Gingeritis]),
         );
         // assert_eq!(mix.sell_price().round(), 47.);
-        // assert_eq!(mix.addictiveness(), 0.15);
+        // assert_eq!(mix.addictiveness(), 15.);
     }
     #[test]
     fn test_green_banana() {
@@ -653,7 +761,7 @@ mod tests {
             HashSet::from([Effect::Gingeritis, Effect::ThoughtProvoking]),
         );
         // assert_eq!(mix.sell_price().round(), 57.);
-        // assert_eq!(mix.addictiveness(), 0.42);
+        // assert_eq!(mix.addictiveness(), 42.);
     }
     #[test]
     fn test_purple_banana() {
@@ -664,15 +772,14 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::Gingeritis]),
         );
         // assert_eq!(mix.sell_price().round(), 51.);
-        // assert_eq!(mix.addictiveness(), 0.05);
+        // assert_eq!(mix.addictiveness(), 05.);
     }
     #[test]
     fn test_meth_banana() {
-        let mix =
-            Sellable::from_product(Product::Meth(Quality::High)).add_ingredient(Ingredient::Banana);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::Banana);
         assert_eq!(mix.effects, HashSet::from([Effect::Gingeritis]),);
         // assert_eq!(mix.sell_price().round(), 85.);
-        // assert_eq!(mix.addictiveness(), 0.94);
+        // assert_eq!(mix.addictiveness(), 94.);
     }
     #[test]
     fn test_cocaine_banana() {
@@ -689,7 +796,7 @@ mod tests {
             HashSet::from([Effect::Calming, Effect::BrightEyed]),
         );
         // assert_eq!(mix.sell_price().round(), 52.);
-        // assert_eq!(mix.addictiveness(), 0.25);
+        // assert_eq!(mix.addictiveness(), 25.);
     }
     #[test]
     fn test_sour_battery() {
@@ -699,7 +806,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::BrightEyed]),
         );
         // assert_eq!(mix.sell_price().round(), 54.);
-        // assert_eq!(mix.addictiveness(), 0.35);
+        // assert_eq!(mix.addictiveness(), 35.);
     }
     #[test]
     fn test_green_battery() {
@@ -709,7 +816,7 @@ mod tests {
             HashSet::from([Effect::Energizing, Effect::BrightEyed]),
         );
         // assert_eq!(mix.sell_price().round(), 57.);
-        // assert_eq!(mix.addictiveness(), 0.59);
+        // assert_eq!(mix.addictiveness(), 59.);
     }
     #[test]
     fn test_purple_battery() {
@@ -720,12 +827,11 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::BrightEyed]),
         );
         // assert_eq!(mix.sell_price().round(), 58.);
-        // assert_eq!(mix.addictiveness(), 0.25);
+        // assert_eq!(mix.addictiveness(), 25.);
     }
     #[test]
     fn test_meth_battery() {
-        let mix = Sellable::from_product(Product::Meth(Quality::High))
-            .add_ingredient(Ingredient::Battery);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::Battery);
         assert_eq!(mix.effects, HashSet::from([Effect::BrightEyed]),);
         // assert_eq!(mix.sell_price().round(), 98.);
         // assert_eq!(mix.addictiveness(), 0.8);
@@ -735,14 +841,14 @@ mod tests {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::Battery);
         assert_eq!(mix.effects, HashSet::from([Effect::BrightEyed]),);
         // assert_eq!(mix.sell_price().round(), 210.);
-        // assert_eq!(mix.addictiveness(), 0.60);
+        // assert_eq!(mix.addictiveness(), 60.);
     }
     #[test]
     fn test_og_chili() {
         let mix = Sellable::from_product(Product::OGKush).add_ingredient(Ingredient::Chili);
         assert_eq!(mix.effects, HashSet::from([Effect::Calming, Effect::Spicy]),);
         // assert_eq!(mix.sell_price().round(), 52.);
-        // assert_eq!(mix.addictiveness(), 0.71);
+        // assert_eq!(mix.addictiveness(), 71.);
     }
     #[test]
     fn test_sour_chili() {
@@ -752,7 +858,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::Spicy]),
         );
         // assert_eq!(mix.sell_price().round(), 53.);
-        // assert_eq!(mix.addictiveness(), 0.81);
+        // assert_eq!(mix.addictiveness(), 81.);
     }
     #[test]
     fn test_green_chili() {
@@ -762,7 +868,7 @@ mod tests {
             HashSet::from([Effect::Energizing, Effect::Spicy]),
         );
         // assert_eq!(mix.sell_price().round(), 56.);
-        // assert_eq!(mix.addictiveness(), 1.);
+        // assert_eq!(mix.addictiveness(), 100.);
     }
     #[test]
     fn test_purple_chili() {
@@ -773,22 +879,21 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::Spicy]),
         );
         // assert_eq!(mix.sell_price().round(), 57.);
-        // assert_eq!(mix.addictiveness(), 0.71);
+        // assert_eq!(mix.addictiveness(), 71.);
     }
     #[test]
     fn test_meth_chili() {
-        let mix =
-            Sellable::from_product(Product::Meth(Quality::High)).add_ingredient(Ingredient::Chili);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::Chili);
         assert_eq!(mix.effects, HashSet::from([Effect::Spicy]),);
         // assert_eq!(mix.sell_price().round(), 97.);
-        // assert_eq!(mix.addictiveness(), 1.);
+        // assert_eq!(mix.addictiveness(), 100.);
     }
     #[test]
     fn test_cocaine_chili() {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::Chili);
         assert_eq!(mix.effects, HashSet::from([Effect::Spicy]),);
         // assert_eq!(mix.sell_price().round(), 207.);
-        // assert_eq!(mix.addictiveness(), 1.);
+        // assert_eq!(mix.addictiveness(), 100.);
     }
     #[test]
     fn test_og_cuke() {
@@ -798,7 +903,7 @@ mod tests {
             HashSet::from([Effect::Calming, Effect::Energizing]),
         );
         // assert_eq!(mix.sell_price().round(), 46.);
-        // assert_eq!(mix.addictiveness(), 0.39);
+        // assert_eq!(mix.addictiveness(), 39.);
     }
     #[test]
     fn test_sour_cuke() {
@@ -808,7 +913,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::Energizing]),
         );
         // assert_eq!(mix.sell_price().round(), 48.);
-        // assert_eq!(mix.addictiveness(), 0.49);
+        // assert_eq!(mix.addictiveness(), 49.);
     }
     #[test]
     fn test_purple_cuke() {
@@ -819,22 +924,21 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::Energizing]),
         );
         // assert_eq!(mix.sell_price().round(), 52.);
-        // assert_eq!(mix.addictiveness(), 0.39);
+        // assert_eq!(mix.addictiveness(), 39.);
     }
     #[test]
     fn test_meth_cuke() {
-        let mix =
-            Sellable::from_product(Product::Meth(Quality::High)).add_ingredient(Ingredient::Cuke);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::Cuke);
         assert_eq!(mix.effects, HashSet::from([Effect::Energizing]),);
         // assert_eq!(mix.sell_price().round(), 84.);
-        // assert_eq!(mix.addictiveness(), 0.60);
+        // assert_eq!(mix.addictiveness(), 60.);
     }
     #[test]
     fn test_cocaine_cuke() {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::Cuke);
         assert_eq!(mix.effects, HashSet::from([Effect::Energizing]),);
         // assert_eq!(mix.sell_price().round(), 183.);
-        // assert_eq!(mix.addictiveness(), 0.74);
+        // assert_eq!(mix.addictiveness(), 74.);
     }
     #[test]
     fn test_og_donut() {
@@ -844,7 +948,7 @@ mod tests {
             HashSet::from([Effect::Calming, Effect::CalorieDense]),
         );
         // assert_eq!(mix.sell_price().round(), 48.);
-        // assert_eq!(mix.addictiveness(), 0.15);
+        // assert_eq!(mix.addictiveness(), 15.);
     }
     #[test]
     fn test_sour_donut() {
@@ -854,7 +958,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::CalorieDense]),
         );
         // assert_eq!(mix.sell_price().round(), 50.);
-        // assert_eq!(mix.addictiveness(), 0.25);
+        // assert_eq!(mix.addictiveness(), 25.);
     }
     #[test]
     fn test_green_donut() {
@@ -864,7 +968,7 @@ mod tests {
             HashSet::from([Effect::Energizing, Effect::CalorieDense]),
         );
         // assert_eq!(mix.sell_price().round(), 52.);
-        // assert_eq!(mix.addictiveness(), 0.49);
+        // assert_eq!(mix.addictiveness(), 49.);
     }
     #[test]
     fn test_purple_donut() {
@@ -875,22 +979,21 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::CalorieDense]),
         );
         // assert_eq!(mix.sell_price().round(), 54.);
-        // assert_eq!(mix.addictiveness(), 0.15);
+        // assert_eq!(mix.addictiveness(), 15.);
     }
     #[test]
     fn test_meth_donut() {
-        let mix =
-            Sellable::from_product(Product::Meth(Quality::High)).add_ingredient(Ingredient::Donut);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::Donut);
         assert_eq!(mix.effects, HashSet::from([Effect::CalorieDense]),);
         // assert_eq!(mix.sell_price().round(), 90.);
-        // assert_eq!(mix.addictiveness(), 0.92);
+        // assert_eq!(mix.addictiveness(), 92.);
     }
     #[test]
     fn test_cocaine_donut() {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::Donut);
         assert_eq!(mix.effects, HashSet::from([Effect::CalorieDense]),);
         // assert_eq!(mix.sell_price().round(), 192.);
-        // assert_eq!(mix.addictiveness(), 0.50);
+        // assert_eq!(mix.addictiveness(), 50.);
     }
     #[test]
     fn test_og_energydrink() {
@@ -900,7 +1003,7 @@ mod tests {
             HashSet::from([Effect::Calming, Effect::Athletic]),
         );
         // assert_eq!(mix.sell_price().round(), 50.);
-        // assert_eq!(mix.addictiveness(), 0.65);
+        // assert_eq!(mix.addictiveness(), 65.);
     }
     #[test]
     fn test_sour_energydrink() {
@@ -911,7 +1014,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::Athletic]),
         );
         // assert_eq!(mix.sell_price().round(), 51.);
-        // assert_eq!(mix.addictiveness(), 0.76);
+        // assert_eq!(mix.addictiveness(), 76.);
     }
     #[test]
     fn test_green_energydrink() {
@@ -922,7 +1025,7 @@ mod tests {
             HashSet::from([Effect::Energizing, Effect::Athletic]),
         );
         // assert_eq!(mix.sell_price().round(), 54.);
-        // assert_eq!(mix.addictiveness(), 0.99);
+        // assert_eq!(mix.addictiveness(), 99.);
     }
     #[test]
     fn test_purple_energydrink() {
@@ -933,22 +1036,21 @@ mod tests {
             HashSet::from([Effect::Munchies, Effect::Athletic]),
         );
         // assert_eq!(mix.sell_price().round(), 50.);
-        // assert_eq!(mix.addictiveness(), 0.75);
+        // assert_eq!(mix.addictiveness(), 75.);
     }
     #[test]
     fn test_meth_energydrink() {
-        let mix = Sellable::from_product(Product::Meth(Quality::High))
-            .add_ingredient(Ingredient::EnergyDrink);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::EnergyDrink);
         assert_eq!(mix.effects, HashSet::from([Effect::Athletic]),);
         // assert_eq!(mix.sell_price().round(), 92.);
-        // assert_eq!(mix.addictiveness(), 1.);
+        // assert_eq!(mix.addictiveness(), 100.);
     }
     #[test]
     fn test_cocaine_energydrink() {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::EnergyDrink);
         assert_eq!(mix.effects, HashSet::from([Effect::Athletic]),);
         // assert_eq!(mix.sell_price().round(), 198.);
-        // assert_eq!(mix.addictiveness(), 1.);
+        // assert_eq!(mix.addictiveness(), 100.);
     }
     #[test]
     fn test_og_flumedicine() {
@@ -958,7 +1060,7 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::BrightEyed]),
         );
         // assert_eq!(mix.sell_price().round(), 58.);
-        // assert_eq!(mix.addictiveness(), 0.25);
+        // assert_eq!(mix.addictiveness(), 25.);
     }
     #[test]
     fn test_sour_flumedicine() {
@@ -969,7 +1071,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::Sedating]),
         );
         // assert_eq!(mix.sell_price().round(), 49.);
-        // assert_eq!(mix.addictiveness(), 0.15);
+        // assert_eq!(mix.addictiveness(), 15.);
     }
     #[test]
     fn test_green_flumedicine() {
@@ -980,29 +1082,28 @@ mod tests {
             HashSet::from([Effect::Energizing, Effect::Sedating]),
         );
         // assert_eq!(mix.sell_price().round(), 52.);
-        // assert_eq!(mix.addictiveness(), 0.39);
+        // assert_eq!(mix.addictiveness(), 39.);
     }
     #[test]
     fn test_meth_flumedicine() {
-        let mix = Sellable::from_product(Product::Meth(Quality::High))
-            .add_ingredient(Ingredient::FluMedicine);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::FluMedicine);
         assert_eq!(mix.effects, HashSet::from([Effect::Sedating]),);
         // assert_eq!(mix.sell_price().round(), 88.);
-        // assert_eq!(mix.addictiveness(), 0.60);
+        // assert_eq!(mix.addictiveness(), 60.);
     }
     #[test]
     fn test_cocaine_flumedicine() {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::FluMedicine);
         assert_eq!(mix.effects, HashSet::from([Effect::Sedating]),);
         // assert_eq!(mix.sell_price().round(), 189.);
-        // assert_eq!(mix.addictiveness(), 0.40);
+        // assert_eq!(mix.addictiveness(), 40.);
     }
     #[test]
     fn test_og_gasoline() {
         let mix = Sellable::from_product(Product::OGKush).add_ingredient(Ingredient::Gasoline);
         assert_eq!(mix.effects, HashSet::from([Effect::Calming, Effect::Toxic]),);
         // assert_eq!(mix.sell_price().round(), 38.);
-        // assert_eq!(mix.addictiveness(), 0.05);
+        // assert_eq!(mix.addictiveness(), 05.);
     }
     #[test]
     fn test_sour_gasoline() {
@@ -1012,7 +1113,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::Toxic]),
         );
         // assert_eq!(mix.sell_price().round(), 40.);
-        // assert_eq!(mix.addictiveness(), 0.15);
+        // assert_eq!(mix.addictiveness(), 15.);
     }
     #[test]
     fn test_green_gasoline() {
@@ -1022,7 +1123,7 @@ mod tests {
             HashSet::from([Effect::Euphoric, Effect::Toxic]),
         );
         // assert_eq!(mix.sell_price().round(), 40.);
-        // assert_eq!(mix.addictiveness(), 0.28);
+        // assert_eq!(mix.addictiveness(), 28.);
     }
     #[test]
     fn test_purple_gasoline() {
@@ -1033,15 +1134,14 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::Toxic]),
         );
         // assert_eq!(mix.sell_price().round(), 44.);
-        // assert_eq!(mix.addictiveness(), 0.05);
+        // assert_eq!(mix.addictiveness(), 05.);
     }
     #[test]
     fn test_meth_gasoline() {
-        let mix = Sellable::from_product(Product::Meth(Quality::High))
-            .add_ingredient(Ingredient::Gasoline);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::Gasoline);
         assert_eq!(mix.effects, HashSet::from([Effect::Toxic]),);
         // assert_eq!(mix.sell_price().round(), 70.);
-        // assert_eq!(mix.addictiveness(), 0.60);
+        // assert_eq!(mix.addictiveness(), 60.);
     }
     #[test]
     fn test_cocaine_gasoline() {
@@ -1058,7 +1158,7 @@ mod tests {
             HashSet::from([Effect::Calming, Effect::LongFaced]),
         );
         // assert_eq!(mix.sell_price().round(), 57.);
-        // assert_eq!(mix.addictiveness(), 0.65);
+        // assert_eq!(mix.addictiveness(), 65.);
     }
     #[test]
     fn test_sour_horsesemen() {
@@ -1069,7 +1169,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::LongFaced]),
         );
         // assert_eq!(mix.sell_price().round(), 61.);
-        // assert_eq!(mix.addictiveness(), 0.99);
+        // assert_eq!(mix.addictiveness(), 99.);
     }
     #[test]
     fn test_green_horsesemen() {
@@ -1080,7 +1180,7 @@ mod tests {
             HashSet::from([Effect::Energizing, Effect::LongFaced]),
         );
         // assert_eq!(mix.sell_price().round(), 58.);
-        // assert_eq!(mix.addictiveness(), 0.76);
+        // assert_eq!(mix.addictiveness(), 76.);
     }
     #[test]
     fn test_purple_horsesemen() {
@@ -1091,22 +1191,21 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::LongFaced]),
         );
         // assert_eq!(mix.sell_price().round(), 62.);
-        // assert_eq!(mix.addictiveness(), 0.65);
+        // assert_eq!(mix.addictiveness(), 65.);
     }
     #[test]
     fn test_meth_horsesemen() {
-        let mix = Sellable::from_product(Product::Meth(Quality::High))
-            .add_ingredient(Ingredient::HorseSemen);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::HorseSemen);
         assert_eq!(mix.effects, HashSet::from([Effect::LongFaced]),);
         // assert_eq!(mix.sell_price().round(), 106.);
-        // assert_eq!(mix.addictiveness(), 1.);
+        // assert_eq!(mix.addictiveness(), 100.);
     }
     #[test]
     fn test_cocaine_horsesemen() {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::HorseSemen);
         assert_eq!(mix.effects, HashSet::from([Effect::LongFaced]),);
         // assert_eq!(mix.sell_price().round(), 228.);
-        // assert_eq!(mix.addictiveness(), 1.);
+        // assert_eq!(mix.addictiveness(), 100.);
     }
     #[test]
     fn test_og_iodine() {
@@ -1116,7 +1215,7 @@ mod tests {
             HashSet::from([Effect::Balding, Effect::Jennerising]),
         );
         // assert_eq!(mix.sell_price().round(), 60.);
-        // assert_eq!(mix.addictiveness(), 0.39);
+        // assert_eq!(mix.addictiveness(), 39.);
     }
     #[test]
     fn test_sour_iodine() {
@@ -1126,7 +1225,7 @@ mod tests {
             HashSet::from([Effect::ThoughtProvoking, Effect::Jennerising]),
         );
         // assert_eq!(mix.sell_price().round(), 65.);
-        // assert_eq!(mix.addictiveness(), 0.76);
+        // assert_eq!(mix.addictiveness(), 76.);
     }
     #[test]
     fn test_green_iodine() {
@@ -1136,7 +1235,7 @@ mod tests {
             HashSet::from([Effect::Energizing, Effect::Jennerising]),
         );
         // assert_eq!(mix.sell_price().round(), 57.);
-        // assert_eq!(mix.addictiveness(), 0.73);
+        // assert_eq!(mix.addictiveness(), 73.);
     }
     #[test]
     fn test_purple_iodine() {
@@ -1147,29 +1246,28 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::Jennerising]),
         );
         // assert_eq!(mix.sell_price().round(), 59.);
-        // assert_eq!(mix.addictiveness(), 0.39);
+        // assert_eq!(mix.addictiveness(), 39.);
     }
     #[test]
     fn test_meth_iodine() {
-        let mix =
-            Sellable::from_product(Product::Meth(Quality::High)).add_ingredient(Ingredient::Iodine);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::Iodine);
         assert_eq!(mix.effects, HashSet::from([Effect::Jennerising]),);
         // assert_eq!(mix.sell_price().round(), 99.);
-        // assert_eq!(mix.addictiveness(), 0.94);
+        // assert_eq!(mix.addictiveness(), 94.);
     }
     #[test]
     fn test_cocaine_iodine() {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::Iodine);
         assert_eq!(mix.effects, HashSet::from([Effect::Jennerising]),);
         // assert_eq!(mix.sell_price().round(), 213.);
-        // assert_eq!(mix.addictiveness(), 0.74);
+        // assert_eq!(mix.addictiveness(), 74.);
     }
     #[test]
     fn test_og_megabean() {
         let mix = Sellable::from_product(Product::OGKush).add_ingredient(Ingredient::MegaBean);
         assert_eq!(mix.effects, HashSet::from([Effect::Foggy, Effect::Glowing]),);
         // assert_eq!(mix.sell_price().round(), 64.);
-        // assert_eq!(mix.addictiveness(), 0.62);
+        // assert_eq!(mix.addictiveness(), 62.);
     }
     #[test]
     fn test_sour_megabean() {
@@ -1179,7 +1277,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::Foggy]),
         );
         // assert_eq!(mix.sell_price().round(), 52.);
-        // assert_eq!(mix.addictiveness(), 0.25);
+        // assert_eq!(mix.addictiveness(), 25.);
     }
     #[test]
     fn test_green_megabean() {
@@ -1189,7 +1287,7 @@ mod tests {
             HashSet::from([Effect::Foggy, Effect::Cyclopean]),
         );
         // assert_eq!(mix.sell_price().round(), 67.);
-        // assert_eq!(mix.addictiveness(), 0.25);
+        // assert_eq!(mix.addictiveness(), 25.);
     }
     #[test]
     fn test_purple_megabean() {
@@ -1200,22 +1298,21 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::Foggy]),
         );
         // assert_eq!(mix.sell_price().round(), 57.);
-        // assert_eq!(mix.addictiveness(), 0.15);
+        // assert_eq!(mix.addictiveness(), 15.);
     }
     #[test]
     fn test_meth_megabean() {
-        let mix = Sellable::from_product(Product::Meth(Quality::High))
-            .add_ingredient(Ingredient::MegaBean);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::MegaBean);
         assert_eq!(mix.effects, HashSet::from([Effect::Foggy]),);
         // assert_eq!(mix.sell_price().round(), 95.);
-        // assert_eq!(mix.addictiveness(), 0.70);
+        // assert_eq!(mix.addictiveness(), 70.);
     }
     #[test]
     fn test_cocaine_megabean() {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::MegaBean);
         assert_eq!(mix.effects, HashSet::from([Effect::Foggy]),);
         // assert_eq!(mix.sell_price().round(), 204.);
-        // assert_eq!(mix.addictiveness(), 0.50);
+        // assert_eq!(mix.addictiveness(), 50.);
     }
     #[test]
     fn test_og_motoroil() {
@@ -1225,7 +1322,7 @@ mod tests {
             HashSet::from([Effect::Calming, Effect::Slippery]),
         );
         // assert_eq!(mix.sell_price().round(), 50.);
-        // assert_eq!(mix.addictiveness(), 0.35);
+        // assert_eq!(mix.addictiveness(), 35.);
     }
     #[test]
     fn test_sour_motoroil() {
@@ -1235,7 +1332,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::Slippery]),
         );
         // assert_eq!(mix.sell_price().round(), 52.);
-        // assert_eq!(mix.addictiveness(), 0.46);
+        // assert_eq!(mix.addictiveness(), 46.);
     }
     #[test]
     fn test_green_motoroil() {
@@ -1245,7 +1342,7 @@ mod tests {
             HashSet::from([Effect::Munchies, Effect::Slippery]),
         );
         // assert_eq!(mix.sell_price().round(), 51.);
-        // assert_eq!(mix.addictiveness(), 0.45);
+        // assert_eq!(mix.addictiveness(), 45.);
     }
     #[test]
     fn test_purple_motoroil() {
@@ -1256,22 +1353,21 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::Slippery]),
         );
         // assert_eq!(mix.sell_price().round(), 56.);
-        // assert_eq!(mix.addictiveness(), 0.35);
+        // assert_eq!(mix.addictiveness(), 35.);
     }
     #[test]
     fn test_meth_motoroil() {
-        let mix = Sellable::from_product(Product::Meth(Quality::High))
-            .add_ingredient(Ingredient::MotorOil);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::MotorOil);
         assert_eq!(mix.effects, HashSet::from([Effect::Slippery]),);
         // assert_eq!(mix.sell_price().round(), 94.);
-        // assert_eq!(mix.addictiveness(), 0.90);
+        // assert_eq!(mix.addictiveness(), 90.);
     }
     #[test]
     fn test_cocaine_motoroil() {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::MotorOil);
         assert_eq!(mix.effects, HashSet::from([Effect::Slippery]),);
         // assert_eq!(mix.sell_price().round(), 201.);
-        // assert_eq!(mix.addictiveness(), 0.70);
+        // assert_eq!(mix.addictiveness(), 70.);
     }
     #[test]
     fn test_og_mouthwash() {
@@ -1281,7 +1377,7 @@ mod tests {
             HashSet::from([Effect::Balding, Effect::AntiGravity]),
         );
         // assert_eq!(mix.sell_price().round(), 64.);
-        // assert_eq!(mix.addictiveness(), 0.66);
+        // assert_eq!(mix.addictiveness(), 66.);
     }
     #[test]
     fn test_sour_mouthwash() {
@@ -1291,7 +1387,7 @@ mod tests {
             HashSet::from([Effect::Balding, Effect::Refreshing]),
         );
         // assert_eq!(mix.sell_price().round(), 50.);
-        // assert_eq!(mix.addictiveness(), 0.15);
+        // assert_eq!(mix.addictiveness(), 15.);
     }
     #[test]
     fn test_green_mouthwash() {
@@ -1301,7 +1397,7 @@ mod tests {
             HashSet::from([Effect::Energizing, Effect::Balding]),
         );
         // assert_eq!(mix.sell_price().round(), 53.);
-        // assert_eq!(mix.addictiveness(), 0.39);
+        // assert_eq!(mix.addictiveness(), 39.);
     }
     #[test]
     fn test_purple_mouthwash() {
@@ -1312,22 +1408,21 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::Balding]),
         );
         // assert_eq!(mix.sell_price().round(), 55.);
-        // assert_eq!(mix.addictiveness(), 0.05);
+        // assert_eq!(mix.addictiveness(), 05.);
     }
     #[test]
     fn test_meth_mouthwash() {
-        let mix = Sellable::from_product(Product::Meth(Quality::High))
-            .add_ingredient(Ingredient::MouthWash);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::MouthWash);
         assert_eq!(mix.effects, HashSet::from([Effect::Balding]),);
         // assert_eq!(mix.sell_price().round(), 91.);
-        // assert_eq!(mix.addictiveness(), 0.60);
+        // assert_eq!(mix.addictiveness(), 60.);
     }
     #[test]
     fn test_cocaine_mouthwash() {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::MouthWash);
         assert_eq!(mix.effects, HashSet::from([Effect::Balding]),);
         // assert_eq!(mix.sell_price().round(), 195.);
-        // assert_eq!(mix.addictiveness(), 0.40);
+        // assert_eq!(mix.addictiveness(), 40.);
     }
     #[test]
     fn test_og_paracetamol() {
@@ -1337,7 +1432,7 @@ mod tests {
             HashSet::from([Effect::Sneaky, Effect::Slippery]),
         );
         // assert_eq!(mix.sell_price().round(), 55.);
-        // assert_eq!(mix.addictiveness(), 0.68);
+        // assert_eq!(mix.addictiveness(), 68.);
     }
     #[test]
     fn test_sour_paracetamol() {
@@ -1348,7 +1443,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::Sneaky]),
         );
         // assert_eq!(mix.sell_price().round(), 48.);
-        // assert_eq!(mix.addictiveness(), 0.48);
+        // assert_eq!(mix.addictiveness(), 48.);
     }
     #[test]
     fn test_green_paracetamol() {
@@ -1359,7 +1454,7 @@ mod tests {
             HashSet::from([Effect::Paranoia, Effect::Sneaky]),
         );
         // assert_eq!(mix.sell_price().round(), 43.);
-        // assert_eq!(mix.addictiveness(), 0.37);
+        // assert_eq!(mix.addictiveness(), 37.);
     }
     #[test]
     fn test_purple_paracetamol() {
@@ -1370,22 +1465,21 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::Sneaky]),
         );
         // assert_eq!(mix.sell_price().round(), 52.);
-        // assert_eq!(mix.addictiveness(), 0.37);
+        // assert_eq!(mix.addictiveness(), 37.);
     }
     #[test]
     fn test_meth_paracetamol() {
-        let mix = Sellable::from_product(Product::Meth(Quality::High))
-            .add_ingredient(Ingredient::Paracetamol);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::Paracetamol);
         assert_eq!(mix.effects, HashSet::from([Effect::Sneaky]),);
         // assert_eq!(mix.sell_price().round(), 87.);
-        // assert_eq!(mix.addictiveness(), 0.70);
+        // assert_eq!(mix.addictiveness(), 70.);
     }
     #[test]
     fn test_cocaine_paracetamol() {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::Paracetamol);
         assert_eq!(mix.effects, HashSet::from([Effect::Sneaky]),);
         // assert_eq!(mix.sell_price().round(), 186.);
-        // assert_eq!(mix.addictiveness(), 0.72);
+        // assert_eq!(mix.addictiveness(), 72.);
     }
     #[test]
     fn test_og_viagra() {
@@ -1395,7 +1489,7 @@ mod tests {
             HashSet::from([Effect::Calming, Effect::TropicThunder]),
         );
         // assert_eq!(mix.sell_price().round(), 55.);
-        // assert_eq!(mix.addictiveness(), 0.85);
+        // assert_eq!(mix.addictiveness(), 85.);
     }
     #[test]
     fn test_sour_viagra() {
@@ -1405,7 +1499,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::TropicThunder]),
         );
         // assert_eq!(mix.sell_price().round(), 56.);
-        // assert_eq!(mix.addictiveness(), 0.95);
+        // assert_eq!(mix.addictiveness(), 95.);
     }
     #[test]
     fn test_green_viagra() {
@@ -1415,7 +1509,7 @@ mod tests {
             HashSet::from([Effect::Energizing, Effect::TropicThunder]),
         );
         // assert_eq!(mix.sell_price().round(), 59.);
-        // assert_eq!(mix.addictiveness(), 0.95);
+        // assert_eq!(mix.addictiveness(), 95.);
     }
     #[test]
     fn test_purple_viagra() {
@@ -1426,21 +1520,20 @@ mod tests {
             HashSet::from([Effect::Sedating, Effect::TropicThunder]),
         );
         // assert_eq!(mix.sell_price().round(), 60.);
-        // assert_eq!(mix.addictiveness(), 0.85);
+        // assert_eq!(mix.addictiveness(), 85.);
     }
     #[test]
     fn test_meth_viagra() {
-        let mix =
-            Sellable::from_product(Product::Meth(Quality::High)).add_ingredient(Ingredient::Viagra);
+        let mix = Sellable::from_product(Product::Meth).add_ingredient(Ingredient::Viagra);
         assert_eq!(mix.effects, HashSet::from([Effect::TropicThunder]),);
         // assert_eq!(mix.sell_price().round(), 102.);
-        // assert_eq!(mix.addictiveness(), 1.);
+        // assert_eq!(mix.addictiveness(), 100.);
     }
     #[test]
     fn test_cocaine_viagra() {
         let mix = Sellable::from_product(Product::Cocaine).add_ingredient(Ingredient::Viagra);
         assert_eq!(mix.effects, HashSet::from([Effect::TropicThunder]),);
         // assert_eq!(mix.sell_price().round(), 219.);
-        // assert_eq!(mix.addictiveness(), 1.);
+        // assert_eq!(mix.addictiveness(), 100.);
     }
 }
