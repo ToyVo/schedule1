@@ -4,8 +4,8 @@ use dioxus_free_icons::{Icon, IconShape};
 #[derive(PartialEq, Props, Clone)]
 pub struct IconButtonProps<T: IconShape + Clone + PartialEq + 'static> {
     pub icon: T,
-    children: Element,
-    onclick: EventHandler<MouseEvent>,
+    pub children: Element,
+    pub onclick: EventHandler<MouseEvent>,
 }
 
 #[component]
