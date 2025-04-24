@@ -7,7 +7,7 @@ pub enum OneTimeIngredient {
     SpeedGrow,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq)]
 pub struct MixState {
     pub ingredients: HashSet<OneTimeIngredient>,
     pub soil_quality: Quality,
@@ -16,7 +16,7 @@ pub struct MixState {
     pub use_pot: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Sellable {
     pub base: Product,
     pub name: String,
