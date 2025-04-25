@@ -14,36 +14,38 @@ pub struct ComponentProps {
 pub fn YieldOptions(props: ComponentProps) -> Element {
     rsx! {
         div {
-            class: "flex gap-2",
-            label {
-                class: "flex gap-2 whitespace-nowrap items-center",
-                "Use PGR",
-                input {
-                    r#type: "checkbox",
-                    checked: "{props.mix_state.ingredients.contains(&OneTimeIngredient::PGR)}",
-                    onchange: move |_| {
-                        props.toggle_ingredient.call(OneTimeIngredient::PGR);
+            class: "flex justify-between col-span-full",
+            div {
+                class: "flex gap-2",
+                label {
+                    class: "flex gap-2 whitespace-nowrap items-center justify-between",
+                    "Use PGR",
+                    input {
+                        r#type: "checkbox",
+                        checked: "{props.mix_state.ingredients.contains(&OneTimeIngredient::PGR)}",
+                        onchange: move |_| {
+                            props.toggle_ingredient.call(OneTimeIngredient::PGR);
+                        }
                     }
                 }
+                Button {
+                    onclick: move |_| {
+                        props.set_use_pot.call(false);
+                    },
+                    active: !props.mix_state.use_pot,
+                    "Tent"
+                }
+                Button {
+                    onclick: move |_| {
+                        props.set_use_pot.call(true);
+                    },
+                    active: props.mix_state.use_pot,
+                    "Pot"
+                }
             }
-            Button {
-                onclick: move |_| {
-                    props.set_use_pot.call(false);
-                },
-                active: !props.mix_state.use_pot,
-                "Tent"
+            div {
+                "/{props.working_product.yield_amount(props.mix_state.clone())}"
             }
-            Button {
-                onclick: move |_| {
-                    props.set_use_pot.call(true);
-                },
-                active: props.mix_state.use_pot,
-                "Pot"
-            }
-        }
-        div {
-            class: "justify-self-end",
-            "/{props.working_product.yield_amount(props.mix_state.clone())}"
         }
     }
 }

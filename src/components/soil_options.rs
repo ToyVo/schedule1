@@ -12,11 +12,11 @@ pub struct ComponentProps {
 #[component]
 pub fn SoilOptions(props: ComponentProps) -> Element {
     rsx! {
-        div { class: "col-span-full flex gap-2",
+        div { class: "flex col-span-full justify-between",
             div {
                 class: "flex flex-col",
                 label {
-                    class: "flex gap-2 whitespace-nowrap items-center",
+                    class: "flex gap-2 whitespace-nowrap items-center justify-between",
                     "Use Fertilizer",
                     input {
                         r#type: "checkbox",
@@ -27,7 +27,7 @@ pub fn SoilOptions(props: ComponentProps) -> Element {
                     }
                 }
                 label {
-                    class: "flex gap-2 whitespace-nowrap items-center",
+                    class: "flex gap-2 whitespace-nowrap items-center justify-between",
                     "Use Speed Grow",
                     input {
                         r#type: "checkbox",
@@ -38,26 +38,29 @@ pub fn SoilOptions(props: ComponentProps) -> Element {
                     }
                 }
             }
-            Button {
-                onclick: move |_| {
-                    props.set_soil_quality.call(Quality::Low);
-                },
-                active: props.mix_state.soil_quality == Quality::Low,
-                "Soil"
-            }
-            Button {
-                onclick: move |_| {
-                    props.set_soil_quality.call(Quality::Medium);
-                },
-                active: props.mix_state.soil_quality == Quality::Medium,
-                "Long-Life Soil"
-            }
-            Button {
-                onclick: move |_| {
-                    props.set_soil_quality.call(Quality::High);
-                },
-                active: props.mix_state.soil_quality == Quality::High,
-                "Extra Long-Life Soil"
+            div {
+                class: "flex gap-2",
+                Button {
+                    onclick: move |_| {
+                        props.set_soil_quality.call(Quality::Low);
+                    },
+                    active: props.mix_state.soil_quality == Quality::Low,
+                    "Soil"
+                }
+                Button {
+                    onclick: move |_| {
+                        props.set_soil_quality.call(Quality::Medium);
+                    },
+                    active: props.mix_state.soil_quality == Quality::Medium,
+                    "Long-Life Soil"
+                }
+                Button {
+                    onclick: move |_| {
+                        props.set_soil_quality.call(Quality::High);
+                    },
+                    active: props.mix_state.soil_quality == Quality::High,
+                    "Extra Long-Life Soil"
+                }
             }
         }
     }

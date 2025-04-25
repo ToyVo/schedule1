@@ -31,8 +31,8 @@ pub use expenses::*;
 mod yield_options;
 pub use yield_options::*;
 
-mod psudo_options;
-pub use psudo_options::*;
+mod pseudo_options;
+pub use pseudo_options::*;
 
 mod total_price;
 pub use total_price::*;

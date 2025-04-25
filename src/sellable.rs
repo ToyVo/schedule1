@@ -11,7 +11,7 @@ pub enum OneTimeIngredient {
 pub struct MixState {
     pub ingredients: HashSet<OneTimeIngredient>,
     pub soil_quality: Quality,
-    pub psudo_quality: Quality,
+    pub pseudo_quality: Quality,
     /// in oposition to using a grow tent
     pub use_pot: bool,
 }
@@ -416,7 +416,7 @@ impl Product {
             Product::SourDiesel => 35.,
             Product::GreenCrack => 40.,
             Product::GranddaddyPurple => 45.,
-            Product::Meth => match state.psudo_quality {
+            Product::Meth => match state.pseudo_quality {
                 Quality::Low => 60.,
                 Quality::Medium => 80.,
                 Quality::High => 110.,

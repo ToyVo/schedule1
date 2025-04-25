@@ -1,7 +1,7 @@
 use crate::components::{Expenses, YieldOptions};
 use crate::sellable::{MixState, Product, Sellable};
 use components::{
-    AddIngredients, Addictiveness, BaseProducts, Causes, PricePerUnit, PsudoOptions, SaveProduct,
+    AddIngredients, Addictiveness, BaseProducts, Causes, PricePerUnit, PseudoOptions, SaveProduct,
     SavedRecipes, SellPrices, SoilOptions, TotalPrice,
 };
 use dioxus::prelude::*;
@@ -60,9 +60,9 @@ fn App() -> Element {
                 div { class: "border col-span-full" }
                 match working_product.read().base {
                     Product::Meth => rsx! {
-                        PsudoOptions {
+                        PseudoOptions {
                             mix_state: mix_state(),
-                            set_psudo_quality: move |quality| mix_state.write().psudo_quality = quality,
+                            set_pseudo_quality: move |quality| mix_state.write().pseudo_quality = quality,
                         }
                     },
                     _ => rsx! {
