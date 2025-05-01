@@ -216,6 +216,9 @@
   .justify-between {
     justify-content: space-between;
   }
+  .justify-center {
+    justify-content: center;
+  }
   .gap-2 {
     gap: calc(var(--spacing) * 2);
   }
@@ -278,6 +281,13 @@
   .outline {
     outline-style: var(--tw-outline-style);
     outline-width: 1px;
+  }
+  .hover\:cursor-not-allowed {
+    &:hover {
+      @media (hover: hover) {
+        cursor: not-allowed;
+      }
+    }
   }
   .hover\:cursor-pointer {
     &:hover {

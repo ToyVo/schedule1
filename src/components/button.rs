@@ -5,6 +5,7 @@ pub struct ButtonProps {
     pub children: Element,
     pub onclick: EventHandler<MouseEvent>,
     pub active: Option<bool>,
+    pub disabled: Option<bool>,
 }
 
 #[component]
@@ -15,6 +16,7 @@ pub fn Button(props: ButtonProps) -> Element {
             class: if props.active == Some(true) {
                 "bg-neutral-700"
             },
+            disabled: props.disabled == Some(true),
             onclick: move |evt| props.onclick.call(evt),
             {props.children}
         }

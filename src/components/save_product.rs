@@ -28,6 +28,7 @@ pub fn SaveProduct(props: ComponentProps) -> Element {
             } else {
                 IconButton {
                     icon: GoBookmark,
+                    disabled: Some(props.working_product.ingredients.is_empty()),
                     onclick: move |_| {
                         props.toggle_save.call(working_product_clone.clone());
                     }
