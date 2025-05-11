@@ -11,7 +11,7 @@ pub struct ComponentProps {
 pub fn PricePerUnit(props: ComponentProps) -> Element {
     rsx! {
         div { class: "col-span-full", "Price per unit:" }
-        div {"{props.working_product.base}"}
+        div {"{props.working_product.base:?}"}
         div { class: "justify-self-end", "${props.working_product.unit_price(props.mix_state.clone()):.2}" }
         match props.working_product.base {
             Product::Meth => rsx! {},

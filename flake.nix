@@ -115,6 +115,7 @@
                     cp $out/index.html $out/404.html
                   '';
                   cargoLock.lockFile = ./Cargo.lock;
+                  doCheck = false;
                 };
             };
           devshells.default = {

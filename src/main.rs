@@ -1,5 +1,5 @@
 use crate::components::{Expenses, YieldOptions};
-use crate::sellable::{MixState, Product, Sellable};
+use crate::sellable::{Effect, MixState, Product, Sellable};
 use components::{
     AddIngredients, Addictiveness, BaseProducts, Causes, PricePerUnit, PseudoOptions, SaveProduct,
     SavedRecipes, SellPrices, SoilOptions, TotalPrice,
@@ -19,7 +19,8 @@ fn main() {
 
 #[component]
 fn App() -> Element {
-    let mut working_product = use_signal(|| Sellable::from_product(Product::OGKush));
+    let mut working_product =
+        use_signal(|| Sellable::from_product(Product::Marijuana(Effect::Calming)));
     let mut saved_recipes = use_signal(HashMap::<String, Sellable>::new);
     let mut mix_state = use_signal(MixState::default);
     rsx! {
