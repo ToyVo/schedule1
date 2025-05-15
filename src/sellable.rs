@@ -506,8 +506,13 @@ impl Sellable {
     }
 
     pub fn addictiveness(&self) -> f32 {
-        (self.base.addictiveness() + self.effects.iter().map(|i| i.addictiveness()).sum::<f32>())
-            .clamp(0., 100.)
+        let mut total_addictiveness = self.base.addictiveness() + self.effects.iter().map(|i| i.addictiveness()).sum::<f32>();
+        if let Product::Marijuana(_) = self.base {
+            if self.ingredients.is_empty() {
+                total_addictiveness -= self.base.addictiveness();
+            }
+        }
+        (total_addictiveness * 100.).clamp(0., 100.).floor()
     }
 
     pub fn key(&self) -> String {
@@ -582,9 +587,9 @@ impl Product {
 
     pub fn addictiveness(&self) -> f32 {
         match self {
-            Product::Marijuana(_) => 5.,
-            Product::Meth => 60.,
-            Product::Cocaine => 40.,
+            Product::Marijuana(_) => 0.05,
+            Product::Meth => 0.6,
+            Product::Cocaine => 0.4,
         }
     }
 }
@@ -696,78 +701,78 @@ impl Effect {
         match self {
             Effect::AntiGravity => 0.54,
             Effect::Athletic => 0.32,
-            Effect::Balding => 0.30,
-            Effect::BrightEyed => 0.40,
-            Effect::Calming => 0.10,
+            Effect::Balding => 0.3,
+            Effect::BrightEyed => 0.4,
+            Effect::Calming => 0.1,
             Effect::CalorieDense => 0.28,
             Effect::Cyclopean => 0.56,
-            Effect::Disorienting => 0.00,
-            Effect::Electrifying => 0.50,
+            Effect::Disorienting => 0.,
+            Effect::Electrifying => 0.5,
             Effect::Energizing => 0.22,
             Effect::Euphoric => 0.18,
-            Effect::Explosive => 0.00,
+            Effect::Explosive => 0.,
             Effect::Focused => 0.16,
             Effect::Foggy => 0.36,
-            Effect::Gingeritis => 0.20,
+            Effect::Gingeritis => 0.2,
             Effect::Glowing => 0.48,
             Effect::Jennerising => 0.42,
-            Effect::Laxative => 0.00,
-            Effect::Lethal => 0.00,
+            Effect::Laxative => 0.,
+            Effect::Lethal => 0.,
             Effect::LongFaced => 0.52,
             Effect::Munchies => 0.12,
-            Effect::Paranoia => 0.00,
+            Effect::Paranoia => 0.,
             Effect::Refreshing => 0.14,
-            Effect::Schizophrenic => 0.00,
+            Effect::Schizophrenic => 0.,
             Effect::Sedating => 0.26,
-            Effect::SeizureInducing => 0.00,
-            Effect::Shrinking => 0.60,
+            Effect::SeizureInducing => 0.,
+            Effect::Shrinking => 0.6,
             Effect::Slippery => 0.34,
-            Effect::Smelly => 0.00,
+            Effect::Smelly => 0.,
             Effect::Sneaky => 0.24,
             Effect::Spicy => 0.38,
             Effect::ThoughtProvoking => 0.44,
-            Effect::Toxic => 0.00,
+            Effect::Toxic => 0.,
             Effect::TropicThunder => 0.46,
             Effect::Zombifying => 0.58,
         }
     }
     pub fn addictiveness(&self) -> f32 {
         match self {
-            Effect::AntiGravity => 59.,
-            Effect::Athletic => 66.,
+            Effect::AntiGravity => 0.611,
+            Effect::Athletic => 0.607,
             Effect::Balding => 0.,
-            Effect::BrightEyed => 20.,
+            Effect::BrightEyed => 0.2,
             Effect::Calming => 0.,
-            Effect::CalorieDense => 10.,
-            Effect::Cyclopean => 10.,
+            Effect::CalorieDense => 0.1,
+            Effect::Cyclopean => 0.1,
             Effect::Disorienting => 0.,
-            Effect::Electrifying => 0.,
-            Effect::Energizing => 34.,
-            Effect::Euphoric => 23.,
+            Effect::Electrifying => 0.235,
+            Effect::Energizing => 0.34,
+            Effect::Euphoric => 0.235,
             Effect::Explosive => 0.,
-            Effect::Focused => 0.,
-            Effect::Foggy => 10.,
+            Effect::Focused => 0.104,
+            Effect::Foggy => 0.1,
             Effect::Gingeritis => 0.,
-            Effect::Glowing => 47.,
-            Effect::Jennerising => 34.,
-            Effect::Laxative => 10.,
+            Effect::Glowing => 0.472,
+            Effect::Jennerising => 0.343,
+            Effect::Laxative => 0.1,
             Effect::Lethal => 0.,
-            Effect::LongFaced => 89.,
-            Effect::Munchies => 10.,
+            Effect::LongFaced => 0.607,
+            Effect::Munchies => 0.096,
             Effect::Paranoia => 0.,
-            Effect::Refreshing => 10.,
+            Effect::Refreshing => 0.104,
             Effect::Schizophrenic => 0.,
             Effect::Sedating => 0.,
             Effect::SeizureInducing => 0.,
-            Effect::Shrinking => 0.,
-            Effect::Slippery => 30.,
+            Effect::Shrinking => 0.336,
+            Effect::Slippery => 0.309,
             Effect::Smelly => 0.,
-            Effect::Sneaky => 32.,
-            Effect::Spicy => 71.,
-            Effect::ThoughtProvoking => 37.,
+            Effect::Sneaky => 0.327,
+            Effect::Spicy => 0.665,
+            Effect::ThoughtProvoking => 0.37,
             Effect::Toxic => 0.,
-            Effect::TropicThunder => 85.,
-            Effect::Zombifying => 10.,
+            Effect::TropicThunder => 0.803,
+            Effect::Zombifying => 0.598,
         }
     }
 }
@@ -2252,7 +2257,7 @@ mod tests {
             HashSet::from([Effect::Refreshing, Effect::LongFaced]),
         );
         assert_eq!(mix.sell_price(), 58.);
-        assert_eq!(mix.addictiveness(), 99.);
+        assert_eq!(mix.addictiveness(), 76.);
     }
     #[test]
     fn test_green_horsesemen() {
@@ -2263,7 +2268,7 @@ mod tests {
             HashSet::from([Effect::Energizing, Effect::LongFaced]),
         );
         assert_eq!(mix.sell_price(), 61.);
-        assert_eq!(mix.addictiveness(), 76.);
+        assert_eq!(mix.addictiveness(), 99.);
     }
     #[test]
     fn test_purple_horsesemen() {
