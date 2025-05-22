@@ -12,7 +12,7 @@ pub struct ComponentProps {
 #[component]
 pub fn SoilOptions(props: ComponentProps) -> Element {
     rsx! {
-        div { class: "flex col-span-full justify-between gap-2",
+        div { class: "flex flex-wrap col-span-full justify-between gap-2",
             div {
                 class: "flex flex-col justify-center",
                 label {

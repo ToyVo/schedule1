@@ -1,8 +1,8 @@
 use crate::components::{Expenses, YieldOptions};
 use crate::sellable::{Effect, MixState, Product, Sellable};
 use components::{
-    AddIngredients, Addictiveness, BaseProducts, Causes, PricePerUnit, PseudoOptions, SaveProduct,
-    SavedRecipes, SellPrices, SoilOptions, TotalPrice,
+    AddIngredients, Addictiveness, BaseProducts, Causes, MixMap, PricePerUnit, PseudoOptions,
+    SaveProduct, SavedRecipes, SellPrices, SoilOptions, TotalPrice,
 };
 use dioxus::prelude::*;
 use std::collections::HashMap;
@@ -21,8 +21,11 @@ fn main() {
 fn App() -> Element {
     let mut working_product =
         use_signal(|| Sellable::from_product(Product::Marijuana(Effect::Calming)));
+    let mut previous_working_product =
+        use_signal(|| Sellable::from_product(Product::Marijuana(Effect::Calming)));
     let mut saved_recipes = use_signal(HashMap::<String, Sellable>::new);
     let mut mix_state = use_signal(MixState::default);
+    let mut added_effect = use_signal(|| None);
     rsx! {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
@@ -31,10 +34,20 @@ fn App() -> Element {
             style: "grid-template-columns: minmax(365px, 1fr) minmax(240px, 1fr) minmax(150px, 1fr)",
             div {
                 class: "grid grid-cols-3 gap-4 content-start",
-                BaseProducts { set_working_product: move |product| working_product.set(Sellable::from_product(product)) }
-                AddIngredients { add_ingredient: move |ingredient| working_product.set(working_product().add_ingredient(ingredient)) }
+                BaseProducts { set_working_product: move |product| {
+                    working_product.set(Sellable::from_product(product));
+                    added_effect.set(None);
+                }}
+                AddIngredients { add_ingredient: move |ingredient| {
+                    previous_working_product.set(working_product());
+                    working_product.set(working_product().add_ingredient(ingredient));
+                    added_effect.set(Some(ingredient.effect()));
+                }}
                 SavedRecipes {
-                    set_working_product: move |recipe| working_product.set(recipe),
+                    set_working_product: move |recipe| {
+                        working_product.set(recipe);
+                        added_effect.set(None);
+                    },
                     working_product: working_product(),
                     saved_recipes: saved_recipes(),
                 }
@@ -107,6 +120,10 @@ fn App() -> Element {
                 if !working_product.read().effects.is_empty() {
                     div { class: "border col-span-full" }
                     Causes { working_product: working_product() }
+                }
+                MixMap {
+                    added_effect: added_effect,
+                    previous_working_product: previous_working_product,
                 }
                 div { class: "border col-span-full" }
                 SellPrices { working_product: working_product() }
